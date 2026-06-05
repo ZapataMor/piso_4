@@ -208,7 +208,7 @@ body:not(.ready) .hero__scroll{ opacity:0; }
 .chapter{ position:relative; z-index:10; }
 
 /* intro fijada que hace zoom */
-.chapter__intro{ position:relative; height:185vh; }
+.chapter__intro{ position:relative; height:155vh; }
 .chapter__pin{
   position:sticky; top:0; height:100svh;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -238,7 +238,7 @@ body:not(.ready) .hero__scroll{ opacity:0; }
 /* contenido del capítulo */
 .chapter__content{
   position:relative; z-index:3;
-  max-width:1240px; margin:0 auto; padding:clamp(40px,7vh,96px) clamp(20px,5vw,56px) clamp(80px,12vh,150px);
+  max-width:1240px; margin:0 auto; padding:clamp(20px,3vh,48px) clamp(20px,5vw,56px) clamp(40px,6vh,80px);
   display:grid; grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr);
   gap:clamp(34px,5vw,76px); align-items:start;
 }
@@ -327,7 +327,7 @@ body:not(.ready) .hero__scroll{ opacity:0; }
   .chapter__content{ grid-template-columns:1fr; gap:30px; }
   .chapter__figure{ position:relative; top:0; }
   .chapter__photo{ aspect-ratio:16/11; }
-  .chapter__intro{ height:150vh; }
+  .chapter__intro{ height:125vh; }
 }
 
 /* ============================================================ FOOTER ============================================================ */

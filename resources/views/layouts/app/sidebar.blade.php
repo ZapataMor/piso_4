@@ -16,6 +16,39 @@
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
+
+                @php($navUser = auth()->user())
+
+                @if ($navUser?->isAdmin() || $navUser?->hasRole('cocina') || $navUser?->hasRole('bar') || $navUser?->hasRole('mesero'))
+                    <flux:sidebar.group :heading="__('Operación')" class="grid">
+                        @if ($navUser?->isAdmin() || $navUser?->hasRole('cocina'))
+                            <flux:sidebar.item icon="fire" :href="route('kitchen.board')" :current="request()->routeIs('kitchen.board')" wire:navigate>
+                                {{ __('Cocina') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if ($navUser?->isAdmin() || $navUser?->hasRole('bar'))
+                            <flux:sidebar.item icon="beaker" :href="route('bar.board')" :current="request()->routeIs('bar.board')" wire:navigate>
+                                {{ __('Bar') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if ($navUser?->isAdmin() || $navUser?->hasRole('mesero'))
+                            <flux:sidebar.item icon="bell-alert" :href="route('waiter.dashboard')" :current="request()->routeIs('waiter.dashboard')" wire:navigate>
+                                {{ __('Meseros') }}
+                            </flux:sidebar.item>
+                        @endif
+                    </flux:sidebar.group>
+                @endif
+
+                @if ($navUser?->isAdmin())
+                    <flux:sidebar.group :heading="__('Administración')" class="grid">
+                        <flux:sidebar.item icon="rectangle-group" :href="route('admin.dashboard')" :current="request()->routeIs('admin.dashboard')" wire:navigate>
+                            {{ __('Panel') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="qr-code" :href="route('admin.mesas.index')" :current="request()->routeIs('admin.mesas.*')" wire:navigate>
+                            {{ __('Mesas y QR') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endif
             </flux:sidebar.nav>
 
             <flux:spacer />

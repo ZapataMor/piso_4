@@ -33,23 +33,23 @@
     setFloor(4);
     root.classList.remove("moving");
     root.classList.add("arrived");
-    setTimeout(()=>root.classList.add("brand-in"), 750);
+    setTimeout(()=>root.classList.add("brand-in"), 400);
   }
   function openDoors(){
     root.classList.add("brand-out");
     setTimeout(()=>{
       root.classList.add("opening");
-      window.dispatchEvent(new Event("piso:reveal"));   // el hero entra al abrir puertas
-      setTimeout(finish, 1750);
-    }, 650);
+      window.dispatchEvent(new Event("piso:reveal"));
+      setTimeout(finish, 1300);
+    }, 400);
   }
 
   const steps = [
     { t:0.0,  fn:start },
-    { t:6.0,  fn:()=>setFloor(2) },
-    { t:9.0,  fn:()=>setFloor(3) },
-    { t:14.1, fn:arrival },
-    { t:17.9, fn:openDoors }
+    { t:1.2,  fn:()=>setFloor(2) },
+    { t:2.0,  fn:()=>setFloor(3) },
+    { t:3.0,  fn:arrival },
+    { t:4.2,  fn:openDoors }
   ];
 
   function loop(now){

@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsureUserHasPermission;
+use App\Http\Middleware\EnsureUserHasRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,7 +14,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'role' => EnsureUserHasRole::class,
+            'permission' => EnsureUserHasPermission::class,
+        ]);
+
+        // Token de participante: bearer efímero por mesa (httpOnly), sin
+        // cifrar para poder leerlo de forma estable en cliente y pruebas.
+        $middleware->encryptCookies(except: ['participant_token']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

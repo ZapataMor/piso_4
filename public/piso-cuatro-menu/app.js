@@ -146,17 +146,17 @@
       const span = o.intro.offsetHeight - vh;
       const p = span>0 ? clamp(-r.top/span, 0, 1) : (r.top<=0?1:0);
 
-      // zoom cinematográfico del título
-      const op    = seg(p,0,.14) * (1 - seg(p,.58,.80));
-      const scale = lerp(.82, 1.0, seg(p,0,.16)) + seg(p,.16,.85)*0.7; // hasta ~1.7
-      const blur  = lerp(6,0,seg(p,0,.16)) + seg(p,.55,.85)*11;
+      // zoom cinematográfico del título — zonas muertas reducidas, velo equilibrado
+      const op    = seg(p,0,.08) * (1 - seg(p,.78,.92));
+      const scale = lerp(.82, 1.0, seg(p,0,.10)) + seg(p,.10,.88)*0.7;
+      const blur  = lerp(6,0,seg(p,0,.10)) + seg(p,.72,.88)*11;
       o.inner.style.setProperty("--ttl-op", op.toFixed(3));
       o.inner.style.setProperty("--ttl-scale", scale.toFixed(3));
       o.inner.style.setProperty("--ttl-blur", blur.toFixed(2)+"px");
 
-      // contribución al oscurecimiento: sube al entrar, se mantiene en el título, baja al salir
-      const darkIn  = smooth(seg(p,0,.20));
-      const darkOut = 1 - smooth(seg(p,.60,.92));
+      // contribución al oscurecimiento: ventana más estrecha para no solapar entre capítulos
+      const darkIn  = smooth(seg(p,0,.14));
+      const darkOut = 1 - smooth(seg(p,.68,.88));
       const b = Math.min(darkIn, darkOut);
       if (b>darkness) darkness = b;
 

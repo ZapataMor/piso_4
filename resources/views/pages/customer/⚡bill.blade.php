@@ -1,0 +1,341 @@
+<?php
+
+use App\Contracts\WhatsAppGateway;
+use App\Enums\BillModality;
+use App\Enums\PaymentMethod;
+use App\Enums\PaymentStatus;
+use App\Enums\WaiterCallType;
+use App\Helpers\Money;
+use App\Models\Bill;
+use App\Models\Mesa;
+use App\Models\Payment;
+use App\Models\SessionParticipant;
+use App\Services\BillService;
+use App\Services\PaymentService;
+use App\Services\WaiterService;
+use Flux\Flux;
+use Illuminate\Support\Collection;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
+use Livewire\Component;
+
+new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Component
+{
+    public Mesa $mesa;
+
+    public string $modalidad = 'unica';
+
+    /** @var array<int,int> item_id => participant_id */
+    public array $assignments = [];
+
+    /** @var array<int,string> payment_id => nombre */
+    public array $payerName = [];
+
+    /** @var array<int,string> payment_id => teléfono */
+    public array $payerPhone = [];
+
+    public bool $editing = false;
+
+    public function mount(Mesa $mesa): void
+    {
+        $this->mesa = $mesa;
+
+        if ($bill = $this->bill) {
+            $this->modalidad = $bill->modalidad->value;
+            $this->hydratePayerData($bill);
+        }
+
+        $this->prefillAssignments();
+    }
+
+    private function participant(): SessionParticipant
+    {
+        $token = request()->cookie('participant_token');
+        $session = $this->mesa->activeSession;
+
+        $participant = ($token && $session)
+            ? SessionParticipant::where('token', $token)
+                ->where('restaurant_session_id', $session->id)
+                ->first()
+            : null;
+
+        abort_unless($participant, 403);
+
+        return $participant;
+    }
+
+    #[Computed]
+    public function bill(): ?Bill
+    {
+        return $this->mesa->activeSession?->bill()
+            ->with(['payments.participant', 'payments.orderItems'])
+            ->first();
+    }
+
+    #[Computed]
+    public function items(): Collection
+    {
+        $session = $this->mesa->activeSession;
+
+        return $session
+            ? $session->orderItems()->where('order_items.estado', '!=', 'cancelado')->with('order.participant')->get()
+            : collect();
+    }
+
+    #[Computed]
+    public function participants(): Collection
+    {
+        return $this->mesa->activeSession?->participants()->get() ?? collect();
+    }
+
+    #[Computed]
+    public function previewShares(): Collection
+    {
+        return $this->bill
+            ? app(PaymentService::class)->shares($this->bill, BillModality::from($this->modalidad), $this->assignments)
+            : collect();
+    }
+
+    public function step(): string
+    {
+        if (! $this->bill) {
+            return 'request';
+        }
+
+        return ($this->editing || $this->bill->payments->isEmpty()) ? 'split' : 'pay';
+    }
+
+    public function requestBill(BillService $bills, WaiterService $waiters): void
+    {
+        $participant = $this->participant();
+        $bill = $bills->requestBill($participant->session, $participant);
+
+        if ($bill->wasRecentlyCreated) {
+            $waiters->call($participant->session, $participant, WaiterCallType::Cuenta);
+        }
+
+        unset($this->bill);
+        $this->prefillAssignments();
+        Flux::toast(text: 'Cuenta solicitada', variant: 'success');
+    }
+
+    public function generate(PaymentService $payments): void
+    {
+        $this->participant();
+
+        if ($bill = $this->bill) {
+            $payments->generate($bill, BillModality::from($this->modalidad), $this->assignments);
+            $this->editing = false;
+            unset($this->bill);
+            $this->hydratePayerData($this->bill);
+        }
+    }
+
+    public function recalculate(): void
+    {
+        $this->participant();
+        $this->editing = true;
+    }
+
+    public function updateMethod(int $paymentId, string $metodo, PaymentService $payments): void
+    {
+        $this->participant();
+
+        if ($payment = $this->bill?->payments->firstWhere('id', $paymentId)) {
+            $payments->setMethod(
+                $payment,
+                PaymentMethod::from($metodo),
+                $this->payerName[$paymentId] ?? null,
+                $this->payerPhone[$paymentId] ?? null,
+            );
+            unset($this->bill);
+        }
+    }
+
+    public function saveTransfer(int $paymentId, PaymentService $payments): void
+    {
+        $this->participant();
+
+        if ($payment = $this->bill?->payments->firstWhere('id', $paymentId)) {
+            $payments->setMethod(
+                $payment,
+                PaymentMethod::Transferencia,
+                $this->payerName[$paymentId] ?? null,
+                $this->payerPhone[$paymentId] ?? null,
+            );
+            unset($this->bill);
+            Flux::toast(text: 'Datos guardados. Abre WhatsApp para enviar el comprobante.', variant: 'success', duration: 2500);
+        }
+    }
+
+    public function whatsappLink(Payment $payment): string
+    {
+        return app(WhatsAppGateway::class)->paymentLink($payment);
+    }
+
+    public function money(float|string|null $v): string
+    {
+        return Money::format($v);
+    }
+
+    private function prefillAssignments(): void
+    {
+        foreach ($this->items as $item) {
+            $this->assignments[$item->id] ??= $item->order->session_participant_id;
+        }
+    }
+
+    private function hydratePayerData(?Bill $bill): void
+    {
+        foreach ($bill?->payments ?? [] as $payment) {
+            $this->payerName[$payment->id] ??= $payment->payer_nombre ?? '';
+            $this->payerPhone[$payment->id] ??= $payment->payer_telefono ?? '';
+        }
+    }
+}; ?>
+
+@php($modalidades = App\Enums\BillModality::cases())
+
+<div class="flex min-h-svh flex-col">
+    <header class="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-800 bg-zinc-950/90 px-5 py-3 backdrop-blur">
+        <div>
+            <p class="text-xs uppercase tracking-widest text-amber-400/80">Mesa {{ $mesa->numero }}</p>
+            <h1 class="text-lg font-semibold">Cuenta</h1>
+        </div>
+        <a href="{{ route('mesa.orders', $mesa) }}" wire:navigate
+           class="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-200 active:scale-95">
+            Mis pedidos
+        </a>
+    </header>
+
+    <main class="flex-1 space-y-5 px-5 py-6">
+        @if ($this->step() === 'request')
+            {{-- Paso 1: solicitar cuenta --}}
+            <div class="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center">
+                <p class="text-sm text-zinc-400">Total de la mesa</p>
+                <p class="mt-1 text-3xl font-semibold">{{ $this->money($this->items->sum(fn ($i) => $i->lineTotalRaw())) }}</p>
+                <button type="button" wire:click="requestBill"
+                    class="mt-5 w-full rounded-xl bg-amber-500 px-5 py-3 text-lg font-semibold text-zinc-950 active:scale-[0.99]">
+                    Solicitar cuenta
+                </button>
+            </div>
+
+        @elseif ($this->step() === 'split')
+            {{-- Paso 2: elegir modalidad --}}
+            <div class="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-zinc-400">Total</span>
+                    <span class="text-xl font-semibold">{{ $this->money($this->bill->total) }}</span>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <p class="text-sm font-medium text-zinc-300">¿Cómo desean pagar?</p>
+                @foreach ($modalidades as $m)
+                    <button type="button" wire:click="$set('modalidad', '{{ $m->value }}')"
+                        class="flex w-full flex-col rounded-xl border p-4 text-left transition {{ $modalidad === $m->value ? 'border-amber-400 bg-amber-500/10' : 'border-zinc-800 bg-zinc-900' }}">
+                        <span class="font-medium">{{ $m->label() }}</span>
+                        <span class="text-sm text-zinc-400">{{ $m->description() }}</span>
+                    </button>
+                @endforeach
+            </div>
+
+            {{-- Personalizada: asignar cada producto --}}
+            @if ($modalidad === 'personalizada')
+                <div class="space-y-2">
+                    <p class="text-sm font-medium text-zinc-300">¿Quién paga cada producto?</p>
+                    @foreach ($this->items as $item)
+                        <div wire:key="assign-{{ $item->id }}" class="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-3">
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-medium">{{ $item->quantity }}× {{ $item->product_name }}</p>
+                                <p class="text-xs text-amber-400">{{ $item->line_total }}</p>
+                            </div>
+                            <select wire:model.live="assignments.{{ $item->id }}"
+                                class="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm">
+                                @foreach ($this->participants as $p)
+                                    <option value="{{ $p->id }}">{{ $p->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
+            {{-- Vista previa de las porciones --}}
+            <div class="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+                <p class="mb-2 text-sm font-medium text-zinc-300">Resumen</p>
+                @foreach ($this->previewShares as $share)
+                    <div class="flex items-center justify-between py-1 text-sm">
+                        <span class="text-zinc-400">{{ $share['participant']?->nombre ?? 'Cuenta única' }}</span>
+                        <span class="font-medium">{{ $this->money($share['amount']) }}</span>
+                    </div>
+                @endforeach
+            </div>
+
+            <button type="button" wire:click="generate"
+                class="w-full rounded-xl bg-amber-500 px-5 py-3 text-lg font-semibold text-zinc-950 active:scale-[0.99]">
+                Generar pagos
+            </button>
+
+        @else
+            {{-- Paso 3: pagar --}}
+            <div class="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+                <span class="text-sm text-zinc-400">Total · {{ $this->bill->modalidad->label() }}</span>
+                <span class="text-xl font-semibold">{{ $this->money($this->bill->total) }}</span>
+            </div>
+
+            @foreach ($this->bill->payments as $payment)
+                <div wire:key="pay-{{ $payment->id }}" class="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-medium">{{ $payment->participant?->nombre ?? 'Cuenta única' }}</p>
+                            <p class="text-lg font-semibold text-amber-400">{{ $this->money($payment->monto) }}</p>
+                        </div>
+                        @if ($payment->estado === PaymentStatus::Confirmado)
+                            <span class="rounded-full bg-green-500/20 px-3 py-1 text-xs font-medium text-green-300">✓ Pago confirmado</span>
+                        @else
+                            <span class="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-300">Pendiente</span>
+                        @endif
+                    </div>
+
+                    @if ($payment->estado !== PaymentStatus::Confirmado)
+                        <div class="grid grid-cols-3 gap-2">
+                            @foreach (PaymentMethod::cases() as $method)
+                                <button type="button" wire:click="updateMethod({{ $payment->id }}, '{{ $method->value }}')"
+                                    class="rounded-lg border px-2 py-2 text-sm transition {{ $payment->metodo === $method ? 'border-amber-400 bg-amber-500/10 text-amber-300' : 'border-zinc-700 text-zinc-300' }}">
+                                    {{ $method->label() }}
+                                </button>
+                            @endforeach
+                        </div>
+
+                        @if ($payment->metodo === PaymentMethod::Transferencia)
+                            <div class="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+                                <input wire:model="payerName.{{ $payment->id }}" placeholder="Nombre de quien transfiere"
+                                    class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm placeholder-zinc-600 focus:border-amber-400 focus:outline-none" />
+                                <input wire:model="payerPhone.{{ $payment->id }}" placeholder="Número telefónico" inputmode="tel"
+                                    class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm placeholder-zinc-600 focus:border-amber-400 focus:outline-none" />
+                                <button type="button" wire:click="saveTransfer({{ $payment->id }})"
+                                    class="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm">
+                                    Guardar datos
+                                </button>
+                                @if ($payment->payer_nombre)
+                                    <a href="{{ $this->whatsappLink($payment) }}" target="_blank" rel="noopener"
+                                        class="block w-full rounded-lg bg-green-600 px-3 py-2.5 text-center text-sm font-semibold text-white active:scale-[0.99]">
+                                        Enviar por WhatsApp
+                                    </a>
+                                    <p class="text-center text-xs text-zinc-500">Envía el comprobante por WhatsApp; el restaurante confirmará tu pago.</p>
+                                @endif
+                            </div>
+                        @endif
+                    @endif
+                </div>
+            @endforeach
+
+            <button type="button" wire:click="recalculate"
+                class="w-full rounded-xl border border-zinc-700 px-5 py-3 text-zinc-300 active:scale-[0.99]">
+                Cambiar forma de pago
+            </button>
+        @endif
+    </main>
+</div>
