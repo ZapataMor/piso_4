@@ -31,7 +31,8 @@ RUN npm ci
 
 COPY . .
 
-RUN npm run build \
+RUN rm -f public/hot \
+    && npm run build \
     && composer dump-autoload --optimize \
     && php artisan package:discover --ansi \
     && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
