@@ -8,6 +8,7 @@ use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
+use App\Events\PaymentConfirmed;
 use App\Models\Bill;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -123,6 +124,8 @@ class PaymentService
         ]);
 
         $this->syncBillStatus($payment->bill);
+
+        PaymentConfirmed::dispatch($payment);
     }
 
     /** Cuando todos los pagos están confirmados, la cuenta queda pagada. */

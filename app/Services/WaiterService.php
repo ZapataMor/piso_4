@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\WaiterCallStatus;
 use App\Enums\WaiterCallType;
+use App\Events\WaiterCalled;
 use App\Models\RestaurantSession;
 use App\Models\SessionParticipant;
 use App\Models\User;
@@ -20,13 +21,17 @@ class WaiterService
         WaiterCallType $tipo = WaiterCallType::Llamado,
         ?string $note = null,
     ): WaiterCall {
-        return $session->waiterCalls()->create([
+        $call = $session->waiterCalls()->create([
             'session_participant_id' => $participant?->id,
             'mesa_id' => $session->mesa_id,
             'tipo' => $tipo,
             'estado' => WaiterCallStatus::Pendiente,
             'note' => $note,
         ]);
+
+        WaiterCalled::dispatch($call);
+
+        return $call;
     }
 
     public function attend(WaiterCall $call, User $by): void

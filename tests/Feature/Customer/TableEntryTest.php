@@ -96,4 +96,33 @@ class TableEntryTest extends TestCase
             ->assertStatus(503)
             ->assertSee('fuera de servicio');
     }
+
+    public function test_a_participant_cannot_access_another_mesas_pages(): void
+    {
+        $mesaA = Mesa::create(['numero' => 1, 'qr_token' => 'tok-a', 'estado' => 'disponible']);
+        $mesaB = Mesa::create(['numero' => 2, 'qr_token' => 'tok-b', 'estado' => 'disponible']);
+
+        $this->get(route('mesa.show', $mesaA));
+        $join = $this->post(route('mesa.join', $mesaA), ['nombre' => 'Juan']);
+        $token = $join->getCookie('participant_token', false)->getValue();
+
+        $this->get(route('mesa.show', $mesaB)); // abre la sesión de B
+
+        // El token de A no es válido para la sesión de B -> reenvío al ingreso.
+        $this->withUnencryptedCookie('participant_token', $token)
+            ->get(route('mesa.menu', $mesaB))
+            ->assertRedirect(route('mesa.show', $mesaB));
+    }
+
+    public function test_join_is_rate_limited(): void
+    {
+        $mesa = $this->mesa();
+        $this->get(route('mesa.show', $mesa));
+
+        for ($i = 0; $i < 15; $i++) {
+            $this->post(route('mesa.join', $mesa), ['nombre' => 'P'.$i])->assertRedirect();
+        }
+
+        $this->post(route('mesa.join', $mesa), ['nombre' => 'P16'])->assertStatus(429);
+    }
 }

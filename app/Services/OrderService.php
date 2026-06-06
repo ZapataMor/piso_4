@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
+use App\Events\OrderItemStatusChanged;
+use App\Events\OrderPlaced;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\SessionParticipant;
@@ -22,7 +24,7 @@ class OrderService
     /** "Enviar Pedido": carrito -> order + order_items (con snapshots). */
     public function submitOrder(SessionParticipant $participant): Order
     {
-        return DB::transaction(function () use ($participant) {
+        $order = DB::transaction(function () use ($participant) {
             $cartItems = $participant->cartItems()->with('product')->lockForUpdate()->get();
 
             if ($cartItems->isEmpty()) {
@@ -64,6 +66,10 @@ class OrderService
 
             return $order->load('items');
         });
+
+        OrderPlaced::dispatch($order);
+
+        return $order;
     }
 
     public function nextOrderNumber(int $sessionId): int
@@ -84,6 +90,8 @@ class OrderService
         ]);
 
         $this->syncOrderStatus($item->order);
+
+        OrderItemStatusChanged::dispatch($item);
     }
 
     public function markItemReady(OrderItem $item, ?User $by = null): void
@@ -96,6 +104,8 @@ class OrderService
         ]);
 
         $this->syncOrderStatus($item->order);
+
+        OrderItemStatusChanged::dispatch($item);
     }
 
     public function deliverItem(OrderItem $item): void
@@ -106,6 +116,8 @@ class OrderService
         ]);
 
         $this->syncOrderStatus($item->order);
+
+        OrderItemStatusChanged::dispatch($item);
     }
 
     public function cancelItem(OrderItem $item): void
@@ -113,6 +125,8 @@ class OrderService
         $item->update(['estado' => OrderItemStatus::Cancelado]);
 
         $this->syncOrderStatus($item->order);
+
+        OrderItemStatusChanged::dispatch($item);
     }
 
     /**

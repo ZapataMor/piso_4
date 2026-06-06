@@ -11,14 +11,14 @@ use App\Models\Category;
 use App\Models\Mesa;
 use App\Models\OrderItem;
 use App\Models\Product;
-use App\Models\RestaurantSession;
-use App\Models\SessionParticipant;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\BillService;
 use App\Services\CartService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\SessionService;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\SettingsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -145,5 +145,34 @@ class PaymentFlowTest extends TestCase
         $this->assertStringContainsString('123-456789-00', $message); // cuenta bancaria
         $this->assertStringContainsString('30.000', $message);
         $this->assertStringStartsWith('https://wa.me/573000000000?text=', $link);
+    }
+
+    public function test_customer_bill_page_renders(): void
+    {
+        $mesa = Mesa::create(['numero' => 9, 'qr_token' => 'tok-9', 'estado' => 'disponible']);
+        $this->get(route('mesa.show', $mesa));
+        $join = $this->post(route('mesa.join', $mesa), ['nombre' => 'Juan']);
+        $token = $join->getCookie('participant_token', false)->getValue();
+
+        $this->withUnencryptedCookie('participant_token', $token)
+            ->get(route('mesa.bill', $mesa))
+            ->assertOk()
+            ->assertSee('Solicitar cuenta');
+    }
+
+    public function test_waiter_sees_bills_to_collect(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        [$session] = $this->scenario();
+        $bill = app(BillService::class)->requestBill($session);
+        app(PaymentService::class)->generate($bill, BillModality::Automatica);
+
+        $mesero = User::factory()->create(['role_id' => Role::where('slug', 'mesero')->value('id')]);
+
+        $this->actingAs($mesero)
+            ->get(route('waiter.dashboard'))
+            ->assertOk()
+            ->assertSee('Cuentas por cobrar')
+            ->assertSee('Confirmar');
     }
 }

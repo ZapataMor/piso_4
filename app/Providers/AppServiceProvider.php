@@ -2,10 +2,15 @@
 
 namespace App\Providers;
 
+use App\Contracts\WhatsAppGateway;
+use App\Services\WhatsApp\DeepLinkWhatsApp;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -18,8 +23,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Gateway de WhatsApp desacoplado (deep link wa.me por defecto).
         $this->app->bind(
-            \App\Contracts\WhatsAppGateway::class,
-            \App\Services\WhatsApp\DeepLinkWhatsApp::class,
+            WhatsAppGateway::class,
+            DeepLinkWhatsApp::class,
         );
     }
 
@@ -30,6 +35,14 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureAuthorization();
+        $this->configureRateLimiting();
+    }
+
+    /** Limitadores nombrados para las rutas públicas del cliente. */
+    protected function configureRateLimiting(): void
+    {
+        RateLimiter::for('mesa-public', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
+        RateLimiter::for('mesa-join', fn (Request $request) => Limit::perMinute(15)->by($request->ip()));
     }
 
     /**

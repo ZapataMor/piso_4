@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ResolvesParticipant;
 use App\Contracts\WhatsAppGateway;
 use App\Enums\BillModality;
 use App\Enums\PaymentMethod;
@@ -22,6 +23,8 @@ use Livewire\Component;
 
 new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Component
 {
+    use ResolvesParticipant;
+
     public Mesa $mesa;
 
     public string $modalidad = 'unica';
@@ -47,22 +50,6 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
         }
 
         $this->prefillAssignments();
-    }
-
-    private function participant(): SessionParticipant
-    {
-        $token = request()->cookie('participant_token');
-        $session = $this->mesa->activeSession;
-
-        $participant = ($token && $session)
-            ? SessionParticipant::where('token', $token)
-                ->where('restaurant_session_id', $session->id)
-                ->first()
-            : null;
-
-        abort_unless($participant, 403);
-
-        return $participant;
     }
 
     #[Computed]
@@ -197,46 +184,48 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
 
 @php($modalidades = App\Enums\BillModality::cases())
 
-<div class="flex min-h-svh flex-col">
-    <header class="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-800 bg-zinc-950/90 px-5 py-3 backdrop-blur">
+<div class="flex min-h-svh flex-col"
+     x-data
+     x-init="window.Echo && window.Echo.channel('mesa.{{ $mesa->qr_token }}').listen('.payment.confirmed', () => $wire.$refresh())">
+    <header class="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-800 bg-zinc-950/90 px-5 py-4 backdrop-blur">
         <div>
-            <p class="text-xs uppercase tracking-widest text-amber-400/80">Mesa {{ $mesa->numero }}</p>
-            <h1 class="text-lg font-semibold">Cuenta</h1>
+            <p class="header-subtitle">Mesa {{ $mesa->numero }}</p>
+            <h1 class="text-lg font-semibold text-zinc-100">Cuenta</h1>
         </div>
-        <a href="{{ route('mesa.orders', $mesa) }}" wire:navigate
-           class="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-200 active:scale-95">
-            Mis pedidos
+        <a href="{{ route('mesa.orders', $mesa) }}" wire:navigate class="btn-secondary text-sm">
+            Pedidos
         </a>
     </header>
 
     <main class="flex-1 space-y-5 px-5 py-6">
         @if ($this->step() === 'request')
             {{-- Paso 1: solicitar cuenta --}}
-            <div class="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center">
-                <p class="text-sm text-zinc-400">Total de la mesa</p>
-                <p class="mt-1 text-3xl font-semibold">{{ $this->money($this->items->sum(fn ($i) => $i->lineTotalRaw())) }}</p>
-                <button type="button" wire:click="requestBill"
-                    class="mt-5 w-full rounded-xl bg-amber-500 px-5 py-3 text-lg font-semibold text-zinc-950 active:scale-[0.99]">
-                    Solicitar cuenta
+            <div class="card-base text-center space-y-4">
+                <div>
+                    <p class="text-muted text-sm">Total estimado de la mesa</p>
+                    <p class="mt-2 text-4xl font-bold text-amber-400">{{ $this->money($this->items->sum(fn ($i) => $i->lineTotalRaw())) }}</p>
+                </div>
+                <button type="button" wire:click="requestBill" class="btn-primary w-full text-lg py-3.5">
+                    🔔 Solicitar cuenta
                 </button>
             </div>
 
         @elseif ($this->step() === 'split')
             {{-- Paso 2: elegir modalidad --}}
-            <div class="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+            <div class="card-base">
                 <div class="flex items-center justify-between">
-                    <span class="text-sm text-zinc-400">Total</span>
-                    <span class="text-xl font-semibold">{{ $this->money($this->bill->total) }}</span>
+                    <span class="text-muted">Total</span>
+                    <span class="text-2xl font-bold text-amber-400">{{ $this->money($this->bill->total) }}</span>
                 </div>
             </div>
 
-            <div class="space-y-2">
-                <p class="text-sm font-medium text-zinc-300">¿Cómo desean pagar?</p>
+            <div class="space-y-3">
+                <p class="text-sm font-semibold text-zinc-300">¿Cómo desean pagar?</p>
                 @foreach ($modalidades as $m)
                     <button type="button" wire:click="$set('modalidad', '{{ $m->value }}')"
-                        class="flex w-full flex-col rounded-xl border p-4 text-left transition {{ $modalidad === $m->value ? 'border-amber-400 bg-amber-500/10' : 'border-zinc-800 bg-zinc-900' }}">
-                        <span class="font-medium">{{ $m->label() }}</span>
-                        <span class="text-sm text-zinc-400">{{ $m->description() }}</span>
+                        class="flex w-full flex-col rounded-xl border p-4 text-left transition {{ $modalidad === $m->value ? 'border-amber-400 bg-amber-500/10 ring-1 ring-amber-500/30' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700' }}">
+                        <span class="font-semibold text-zinc-100">{{ $m->label() }}</span>
+                        <span class="text-sm text-muted mt-1">{{ $m->description() }}</span>
                     </button>
                 @endforeach
             </div>
@@ -244,15 +233,15 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
             {{-- Personalizada: asignar cada producto --}}
             @if ($modalidad === 'personalizada')
                 <div class="space-y-2">
-                    <p class="text-sm font-medium text-zinc-300">¿Quién paga cada producto?</p>
+                    <p class="text-sm font-semibold text-zinc-300">¿Quién paga cada producto?</p>
                     @foreach ($this->items as $item)
-                        <div wire:key="assign-{{ $item->id }}" class="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-3">
-                            <div class="min-w-0">
-                                <p class="truncate text-sm font-medium">{{ $item->quantity }}× {{ $item->product_name }}</p>
-                                <p class="text-xs text-amber-400">{{ $item->line_total }}</p>
+                        <div wire:key="assign-{{ $item->id }}" class="flex items-center justify-between gap-3 card-base">
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-medium text-zinc-100">{{ $item->quantity }}× {{ $item->product_name }}</p>
+                                <p class="text-xs text-amber-400 font-semibold mt-0.5">{{ $item->line_total }}</p>
                             </div>
                             <select wire:model.live="assignments.{{ $item->id }}"
-                                class="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm">
+                                class="input-base text-xs w-auto">
                                 @foreach ($this->participants as $p)
                                     <option value="{{ $p->id }}">{{ $p->nombre }}</option>
                                 @endforeach
@@ -263,39 +252,42 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
             @endif
 
             {{-- Vista previa de las porciones --}}
-            <div class="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-                <p class="mb-2 text-sm font-medium text-zinc-300">Resumen</p>
-                @foreach ($this->previewShares as $share)
-                    <div class="flex items-center justify-between py-1 text-sm">
-                        <span class="text-zinc-400">{{ $share['participant']?->nombre ?? 'Cuenta única' }}</span>
-                        <span class="font-medium">{{ $this->money($share['amount']) }}</span>
-                    </div>
-                @endforeach
+            <div class="card-base space-y-2">
+                <p class="text-sm font-semibold text-zinc-300">Resumen de pagos</p>
+                <div class="space-y-1.5 pt-1">
+                    @foreach ($this->previewShares as $share)
+                        <div class="flex items-center justify-between py-1.5 border-b border-zinc-800 last:border-0">
+                            <span class="text-zinc-300">{{ $share['participant']?->nombre ?? 'Cuenta única' }}</span>
+                            <span class="font-semibold text-amber-400">{{ $this->money($share['amount']) }}</span>
+                        </div>
+                    @endforeach
+                </div>
             </div>
 
-            <button type="button" wire:click="generate"
-                class="w-full rounded-xl bg-amber-500 px-5 py-3 text-lg font-semibold text-zinc-950 active:scale-[0.99]">
-                Generar pagos
+            <button type="button" wire:click="generate" class="btn-primary w-full text-lg py-3.5">
+                ✓ Generar pagos
             </button>
 
         @else
             {{-- Paso 3: pagar --}}
-            <div class="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-                <span class="text-sm text-zinc-400">Total · {{ $this->bill->modalidad->label() }}</span>
-                <span class="text-xl font-semibold">{{ $this->money($this->bill->total) }}</span>
+            <div class="card-base">
+                <div class="flex items-center justify-between">
+                    <span class="text-muted text-sm">Total · {{ $this->bill->modalidad->label() }}</span>
+                    <span class="text-2xl font-bold text-amber-400">{{ $this->money($this->bill->total) }}</span>
+                </div>
             </div>
 
             @foreach ($this->bill->payments as $payment)
-                <div wire:key="pay-{{ $payment->id }}" class="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+                <div wire:key="pay-{{ $payment->id }}" class="card-base space-y-4">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="font-medium">{{ $payment->participant?->nombre ?? 'Cuenta única' }}</p>
-                            <p class="text-lg font-semibold text-amber-400">{{ $this->money($payment->monto) }}</p>
+                            <p class="font-semibold text-zinc-100">{{ $payment->participant?->nombre ?? 'Cuenta única' }}</p>
+                            <p class="text-lg font-bold text-amber-400 mt-1">{{ $this->money($payment->monto) }}</p>
                         </div>
                         @if ($payment->estado === PaymentStatus::Confirmado)
-                            <span class="rounded-full bg-green-500/20 px-3 py-1 text-xs font-medium text-green-300">✓ Pago confirmado</span>
+                            <span class="rounded-full bg-green-500/20 px-3 py-1 text-xs font-semibold text-green-300">✓ Confirmado</span>
                         @else
-                            <span class="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-300">Pendiente</span>
+                            <span class="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-300">Pendiente</span>
                         @endif
                     </div>
 
@@ -303,28 +295,27 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
                         <div class="grid grid-cols-3 gap-2">
                             @foreach (PaymentMethod::cases() as $method)
                                 <button type="button" wire:click="updateMethod({{ $payment->id }}, '{{ $method->value }}')"
-                                    class="rounded-lg border px-2 py-2 text-sm transition {{ $payment->metodo === $method ? 'border-amber-400 bg-amber-500/10 text-amber-300' : 'border-zinc-700 text-zinc-300' }}">
+                                    class="rounded-lg border px-2 py-2 text-xs font-semibold transition {{ $payment->metodo === $method ? 'border-amber-400 bg-amber-500/10 text-amber-300' : 'border-zinc-700 text-zinc-300 hover:border-zinc-600' }}">
                                     {{ $method->label() }}
                                 </button>
                             @endforeach
                         </div>
 
                         @if ($payment->metodo === PaymentMethod::Transferencia)
-                            <div class="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+                            <div class="space-y-2 rounded-lg border border-zinc-700 bg-zinc-950 p-3">
                                 <input wire:model="payerName.{{ $payment->id }}" placeholder="Nombre de quien transfiere"
-                                    class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm placeholder-zinc-600 focus:border-amber-400 focus:outline-none" />
+                                    class="input-base w-full text-sm" />
                                 <input wire:model="payerPhone.{{ $payment->id }}" placeholder="Número telefónico" inputmode="tel"
-                                    class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm placeholder-zinc-600 focus:border-amber-400 focus:outline-none" />
-                                <button type="button" wire:click="saveTransfer({{ $payment->id }})"
-                                    class="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm">
+                                    class="input-base w-full text-sm" />
+                                <button type="button" wire:click="saveTransfer({{ $payment->id }})" class="btn-secondary w-full text-sm">
                                     Guardar datos
                                 </button>
                                 @if ($payment->payer_nombre)
                                     <a href="{{ $this->whatsappLink($payment) }}" target="_blank" rel="noopener"
-                                        class="block w-full rounded-lg bg-green-600 px-3 py-2.5 text-center text-sm font-semibold text-white active:scale-[0.99]">
-                                        Enviar por WhatsApp
+                                        class="block w-full rounded-lg bg-green-600 hover:bg-green-700 px-3 py-2.5 text-center text-sm font-semibold text-white active:scale-[0.98] transition">
+                                        💬 Enviar por WhatsApp
                                     </a>
-                                    <p class="text-center text-xs text-zinc-500">Envía el comprobante por WhatsApp; el restaurante confirmará tu pago.</p>
+                                    <p class="text-center text-xs text-muted-sm">Comparte el comprobante; el personal confirmará el pago</p>
                                 @endif
                             </div>
                         @endif
@@ -332,9 +323,8 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
                 </div>
             @endforeach
 
-            <button type="button" wire:click="recalculate"
-                class="w-full rounded-xl border border-zinc-700 px-5 py-3 text-zinc-300 active:scale-[0.99]">
-                Cambiar forma de pago
+            <button type="button" wire:click="recalculate" class="btn-secondary w-full">
+                ← Cambiar forma de pago
             </button>
         @endif
     </main>

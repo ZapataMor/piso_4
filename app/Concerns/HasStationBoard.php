@@ -4,6 +4,7 @@ namespace App\Concerns;
 
 use App\Enums\OrderItemStatus;
 use App\Enums\PreparationType;
+use App\Enums\RoleType;
 use App\Models\OrderItem;
 use App\Services\OrderService;
 use Illuminate\Support\Collection;
@@ -18,6 +19,15 @@ use Livewire\Attributes\Computed;
 trait HasStationBoard
 {
     abstract public function stationType(): PreparationType;
+
+    /** Re-autoriza por estación en cada petición Livewire (mount + updates). */
+    public function boot(): void
+    {
+        $user = auth()->user();
+        $role = $this->stationType() === PreparationType::Cocina ? RoleType::Cocina : RoleType::Bar;
+
+        abort_unless($user && $user->is_active && ($user->isAdmin() || $user->hasRole($role)), 403);
+    }
 
     /** @return array<string, Collection<int, OrderItem>> */
     #[Computed]

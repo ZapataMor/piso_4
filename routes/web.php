@@ -14,13 +14,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // Flujo público del cliente: escanear QR -> nombre -> menú interactivo.
-Route::prefix('mesa/{mesa:qr_token}')->group(function () {
+Route::prefix('mesa/{mesa:qr_token}')->middleware('throttle:mesa-public')->group(function () {
     Route::get('/', [TableEntryController::class, 'show'])->name('mesa.show');
-    Route::post('/entrar', [TableEntryController::class, 'join'])->name('mesa.join');
+    Route::post('/entrar', [TableEntryController::class, 'join'])->middleware('throttle:mesa-join')->name('mesa.join');
 
     Route::middleware(EnsureParticipant::class)->group(function () {
         Route::livewire('/menu', 'pages::customer.menu')->name('mesa.menu');
         Route::livewire('/pedidos', 'pages::customer.orders')->name('mesa.orders');
+        Route::livewire('/cuenta', 'pages::customer.bill')->name('mesa.bill');
     });
 });
 

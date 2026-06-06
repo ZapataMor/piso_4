@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\BillModality;
 use App\Enums\BillStatus;
 use App\Enums\OrderItemStatus;
+use App\Events\BillRequested;
 use App\Models\Bill;
 use App\Models\RestaurantSession;
 use App\Models\SessionParticipant;
@@ -28,7 +29,12 @@ class BillService
             ],
         );
 
+        $created = $bill->wasRecentlyCreated;
         $bill->update(['total' => $this->computeTotal($session)]);
+
+        if ($created) {
+            BillRequested::dispatch($bill);
+        }
 
         return $bill;
     }

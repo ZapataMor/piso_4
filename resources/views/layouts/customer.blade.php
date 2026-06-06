@@ -3,8 +3,9 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-svh bg-zinc-950 text-zinc-100 antialiased">
-        <div class="mx-auto flex min-h-svh w-full max-w-lg flex-col">
+    <body class="min-h-svh antialiased">
+        <x-smoke-bg />
+        <div class="relative z-10 mx-auto flex min-h-svh w-full max-w-lg flex-col">
             {{ $slot }}
         </div>
 

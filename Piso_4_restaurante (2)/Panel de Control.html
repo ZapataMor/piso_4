@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de Control · Piso Cuatro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..600&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   PISO CUATRO — Sistema visual
+   Negro profundo · blanco cálido · plata/champaña metálica
+   ============================================================ */
+:root{
+  --piso-black:#060607; --piso-ink:#0b0b0d; --piso-panel:#101013;
+  --piso-line:rgba(244,242,238,.12); --piso-line-2:rgba(244,242,238,.20);
+  --piso-fg:#f5f3ef; --piso-muted:rgba(245,243,239,.58); --piso-faint:rgba(245,243,239,.34);
+  --piso-silver-1:oklch(0.96 0.008 90); --piso-silver-2:oklch(0.80 0.012 90); --piso-silver-3:oklch(0.62 0.014 88);
+  --piso-gold:oklch(0.82 0.055 84); --piso-gold-soft:oklch(0.82 0.055 84 / .42);
+  --piso-ease:cubic-bezier(.22,.61,.36,1); --piso-ease-out:cubic-bezier(.16,1,.3,1);
+  --piso-spring:cubic-bezier(.34,1.56,.64,1);
+  --font-sans:'Manrope','Helvetica Neue',ui-sans-serif,system-ui,sans-serif;
+  --font-serif:'Bodoni Moda','Times New Roman',serif;
+  /* acentos sutiles por variante (se mantienen monocromáticos/elegantes) */
+  --v-success:oklch(0.78 0.09 155); --v-info:oklch(0.74 0.09 240);
+  --v-warning:oklch(0.82 0.055 84); --v-default:oklch(0.82 0.055 84);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{
+  font-family:var(--font-sans);
+  background:var(--piso-black);
+  color:var(--piso-fg);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  min-height:100vh;
+}
+::selection{background:var(--piso-gold-soft);color:#fff;}
+.serif{font-family:var(--font-serif);}
+.metal{
+  background:linear-gradient(176deg,var(--piso-silver-1) 8%,var(--piso-silver-2) 52%,var(--piso-silver-3) 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+}
+
+/* ===================== FONDO DE HUMO ===================== */
+.piso-bg{position:fixed;inset:0;z-index:0;background:var(--piso-black);overflow:hidden;pointer-events:none;}
+.piso-bg .layer{position:absolute;inset:-4%;width:108%;height:108%;object-fit:cover;opacity:0;transition:opacity 1.6s var(--piso-ease);will-change:opacity;}
+.piso-bg .smoke{filter:blur(5px) brightness(1.05) contrast(1.1) grayscale(.15);opacity:.55;}
+@media (orientation:landscape){
+  .piso-bg .smoke{inset:auto;top:50%;left:50%;width:100vh;height:100vw;transform:translate(-50%,-50%) rotate(90deg) scale(1.14);transform-origin:center;}
+}
+.piso-bg::after{content:"";position:absolute;inset:0;
+  background:
+    radial-gradient(120% 90% at 50% 18%,transparent 30%,rgba(6,6,7,.6) 78%,rgba(6,6,7,.94) 100%),
+    linear-gradient(180deg,rgba(6,6,7,.6),rgba(6,6,7,.25) 30%,rgba(6,6,7,.25) 70%,rgba(6,6,7,.78));}
+
+/* ===================== LAYOUT ===================== */
+.shell{position:relative;z-index:10;min-height:100vh;display:flex;flex-direction:column;}
+
+/* ===================== NAVBAR SUPERIOR ===================== */
+.nav{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;gap:22px;
+  padding:14px 30px;
+  background:rgba(8,8,10,.72);
+  backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);
+  border-bottom:1px solid var(--piso-line);
+}
+.nav__brand{display:flex;align-items:center;gap:14px;flex-shrink:0;}
+.nav__brand img{height:30px;width:auto;display:block;}
+.nav__brand .sep{width:1px;height:26px;background:var(--piso-line-2);}
+.nav__brand .tag{font-size:9.5px;letter-spacing:.38em;text-transform:uppercase;color:var(--piso-faint);font-weight:600;line-height:1.4;}
+
+/* lista de módulos */
+.nav__rail{
+  display:flex;align-items:center;gap:5px;flex:1;min-width:0;
+  overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;
+}
+.nav__rail::-webkit-scrollbar{display:none;}
+.nav__group{display:flex;align-items:center;gap:5px;}
+.nav__divider{width:1px;height:22px;background:var(--piso-line);margin:0 7px;flex-shrink:0;}
+
+.nav__item{
+  position:relative;flex-shrink:0;
+  display:flex;align-items:center;gap:0;
+  height:40px;padding:0 11px;
+  border-radius:999px;
+  border:1px solid transparent;
+  color:var(--piso-muted);
+  cursor:pointer;background:transparent;
+  font-family:var(--font-sans);
+  transition:color .4s var(--piso-ease),background .5s var(--piso-ease),border-color .5s var(--piso-ease),padding .5s var(--piso-spring);
+  white-space:nowrap;
+}
+.nav__item svg{width:18px;height:18px;flex-shrink:0;stroke-width:1.6;transition:transform .5s var(--piso-spring);}
+.nav__item .lbl{
+  display:inline-block;max-width:0;opacity:0;overflow:hidden;
+  font-size:12px;font-weight:600;letter-spacing:.02em;
+  transition:max-width .55s var(--piso-spring),opacity .35s var(--piso-ease),margin .55s var(--piso-spring);
+  margin-left:0;
+}
+.nav__item:hover{color:var(--piso-fg);}
+.nav__item:hover svg{transform:translateY(-1px);}
+.nav__item.active{
+  color:var(--piso-fg);
+  padding:0 17px;
+  border-color:var(--piso-gold-soft);
+  background:linear-gradient(180deg,rgba(212,180,120,.18),rgba(212,180,120,.05));
+  box-shadow:0 6px 26px rgba(212,180,120,.14);
+}
+.nav__item.active .lbl{max-width:160px;opacity:1;margin-left:9px;}
+.nav__item.active svg{color:var(--piso-gold);}
+/* tooltip para ítems colapsados */
+.nav__item .tip{
+  position:absolute;top:calc(100% + 9px);left:50%;transform:translateX(-50%) translateY(-4px);
+  background:rgba(16,16,19,.96);border:1px solid var(--piso-line-2);
+  padding:5px 11px;border-radius:8px;font-size:11px;letter-spacing:.04em;color:var(--piso-fg);
+  white-space:nowrap;pointer-events:none;opacity:0;transition:all .25s var(--piso-ease);z-index:60;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);
+}
+.nav__item:not(.active):hover .tip{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* utilidades derecha */
+.nav__utils{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.icon-btn{
+  width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+  border-radius:999px;border:1px solid var(--piso-line);background:transparent;color:var(--piso-muted);
+  cursor:pointer;transition:all .35s var(--piso-ease);position:relative;
+}
+.icon-btn svg{width:17px;height:17px;stroke-width:1.6;}
+.icon-btn:hover{color:var(--piso-fg);border-color:var(--piso-silver-3);}
+.icon-btn .tip{position:absolute;top:calc(100% + 9px);left:50%;transform:translateX(-50%) translateY(-4px);
+  background:rgba(16,16,19,.96);border:1px solid var(--piso-line-2);padding:5px 11px;border-radius:8px;
+  font-size:11px;color:var(--piso-fg);white-space:nowrap;pointer-events:none;opacity:0;transition:all .25s var(--piso-ease);z-index:60;}
+.icon-btn:hover .tip{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* menú usuario */
+.user{position:relative;flex-shrink:0;margin-left:4px;}
+.user__btn{
+  display:flex;align-items:center;gap:10px;padding:5px 12px 5px 5px;
+  border-radius:999px;border:1px solid var(--piso-line);background:rgba(255,255,255,.02);
+  cursor:pointer;transition:all .35s var(--piso-ease);
+}
+.user__btn:hover{border-color:var(--piso-silver-3);background:rgba(255,255,255,.04);}
+.user__av{
+  width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--piso-black);
+  background:linear-gradient(150deg,var(--piso-silver-1),var(--piso-silver-3));
+}
+.user__name{font-size:12.5px;font-weight:600;color:var(--piso-fg);}
+.user__btn .chev{width:14px;height:14px;color:var(--piso-faint);transition:transform .3s var(--piso-ease);}
+.user.open .user__btn .chev{transform:rotate(180deg);}
+.user__menu{
+  position:absolute;top:calc(100% + 10px);right:0;width:240px;
+  background:rgba(13,13,16,.97);backdrop-filter:blur(16px);border:1px solid var(--piso-line-2);
+  border-radius:14px;padding:8px;box-shadow:0 24px 60px rgba(0,0,0,.6);
+  opacity:0;visibility:hidden;transform:translateY(-8px) scale(.98);transform-origin:top right;
+  transition:all .35s var(--piso-ease);z-index:60;
+}
+.user.open .user__menu{opacity:1;visibility:visible;transform:translateY(0) scale(1);}
+.user__head{display:flex;align-items:center;gap:10px;padding:9px 9px 11px;}
+.user__head .nm{font-size:13px;font-weight:600;color:var(--piso-fg);}
+.user__head .em{font-size:11px;color:var(--piso-muted);}
+.user__rule{height:1px;background:var(--piso-line);margin:2px 4px;}
+.user__menu a{
+  display:flex;align-items:center;gap:11px;padding:10px 9px;border-radius:9px;
+  color:var(--piso-muted);text-decoration:none;font-size:13px;font-weight:500;transition:all .25s var(--piso-ease);
+}
+.user__menu a svg{width:16px;height:16px;stroke-width:1.7;}
+.user__menu a:hover{background:rgba(255,255,255,.04);color:var(--piso-fg);}
+
+/* ===================== MAIN ===================== */
+.main{flex:1;width:100%;max-width:1480px;margin:0 auto;padding:48px 40px 80px;}
+.view{display:none;}
+.view.active{display:block;}
+
+/* header */
+.kicker{font-size:12px;letter-spacing:.42em;text-transform:uppercase;font-weight:600;color:var(--piso-gold);}
+.head-row{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin:10px 0 0;}
+.title{font-family:var(--font-serif);font-weight:500;font-size:clamp(34px,4.4vw,52px);line-height:1.0;letter-spacing:-.01em;}
+.btn-secondary{
+  display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--piso-muted);padding:12px 22px;border-radius:999px;border:1px solid var(--piso-line);background:transparent;
+  transition:all .4s var(--piso-ease);cursor:pointer;flex-shrink:0;font-family:var(--font-sans);
+}
+.btn-secondary svg{width:15px;height:15px;stroke-width:2;transition:transform .6s var(--piso-ease);}
+.btn-secondary:hover{color:var(--piso-fg);border-color:var(--piso-gold);}
+.btn-secondary:hover svg{transform:rotate(-180deg);}
+.head-rule{height:1px;background:linear-gradient(90deg,var(--piso-gold-soft),transparent);margin:26px 0 34px;}
+
+/* ===================== MÉTRICAS ===================== */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;}
+.metric{
+  position:relative;border-radius:16px;border:1px solid var(--piso-line);
+  background:linear-gradient(168deg,rgba(20,20,24,.72),rgba(11,11,13,.55));
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  padding:24px 24px 22px;overflow:hidden;
+  transition:transform .5s var(--piso-ease),border-color .5s var(--piso-ease),box-shadow .5s var(--piso-ease);
+}
+.metric::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;
+  background:linear-gradient(160deg,rgba(255,255,255,.10),transparent 40%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+  pointer-events:none;}
+/* halo de color sutil por variante */
+.metric::after{content:"";position:absolute;top:-40%;right:-20%;width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,var(--accent) 0%,transparent 68%);opacity:.10;filter:blur(8px);
+  transition:opacity .5s var(--piso-ease);pointer-events:none;}
+.metric:hover{transform:translateY(-4px);border-color:var(--piso-gold-soft);box-shadow:0 22px 50px rgba(0,0,0,.45);}
+.metric:hover::after{opacity:.22;}
+.metric__top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;}
+.metric__label{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--piso-muted);font-weight:600;}
+.metric__ico{
+  width:46px;height:46px;border-radius:13px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--piso-line-2);
+  background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.01));
+  position:relative;
+}
+.metric__ico svg{width:22px;height:22px;stroke-width:1.5;color:var(--accent);}
+.metric__val{font-family:var(--font-serif);font-weight:500;font-size:46px;line-height:1;margin-top:26px;letter-spacing:-.01em;}
+.metric__foot{display:flex;align-items:center;gap:7px;margin-top:14px;font-size:11.5px;color:var(--piso-faint);font-weight:500;}
+.metric__dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);}
+
+/* ===================== GESTIÓN RÁPIDA ===================== */
+.section-h{display:flex;align-items:center;gap:16px;margin:52px 0 22px;}
+.section-h h2{font-family:var(--font-serif);font-weight:500;font-size:26px;letter-spacing:-.01em;}
+.section-h .line{flex:1;height:1px;background:var(--piso-line);}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.quick a{
+  position:relative;display:flex;align-items:center;gap:16px;
+  border-radius:14px;border:1px solid var(--piso-line);
+  background:rgba(16,16,19,.5);backdrop-filter:blur(8px);
+  padding:18px 20px;text-decoration:none;overflow:hidden;
+  transition:transform .45s var(--piso-ease),border-color .45s var(--piso-ease),background .45s var(--piso-ease);
+}
+.quick a::before{content:"";position:absolute;left:0;top:0;bottom:0;width:0;
+  background:linear-gradient(90deg,rgba(212,180,120,.12),transparent);transition:width .5s var(--piso-ease);}
+.quick a:hover{transform:translateY(-3px);border-color:var(--piso-gold-soft);background:rgba(20,20,24,.62);}
+.quick a:hover::before{width:100%;}
+.quick__ico{
+  width:44px;height:44px;border-radius:12px;flex-shrink:0;position:relative;z-index:1;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--piso-line-2);background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,.01));
+  color:var(--piso-silver-2);transition:all .45s var(--piso-ease);
+}
+.quick__ico svg{width:21px;height:21px;stroke-width:1.5;}
+.quick a:hover .quick__ico{color:var(--piso-gold);border-color:var(--piso-gold-soft);transform:scale(1.05);}
+.quick__txt{flex:1;position:relative;z-index:1;display:flex;flex-direction:column;gap:2px;}
+.quick__txt .t{font-size:14.5px;font-weight:600;color:var(--piso-fg);}
+.quick__txt .s{font-size:11.5px;color:var(--piso-faint);}
+.quick__arr{position:relative;z-index:1;width:18px;height:18px;color:var(--piso-faint);transition:all .45s var(--piso-spring);}
+.quick a:hover .quick__arr{color:var(--piso-gold);transform:translateX(4px);}
+
+/* ===================== MÓDULO GENÉRICO (otros views) ===================== */
+.module{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  border-radius:20px;border:1px solid var(--piso-line);background:rgba(13,13,16,.45);backdrop-filter:blur(10px);
+  padding:80px 40px;margin-top:10px;
+}
+.module__ico{width:74px;height:74px;border-radius:20px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--piso-gold-soft);background:linear-gradient(160deg,rgba(212,180,120,.12),rgba(255,255,255,.01));
+  color:var(--piso-gold);margin-bottom:24px;}
+.module__ico svg{width:34px;height:34px;stroke-width:1.4;}
+.module p{color:var(--piso-muted);font-size:14.5px;max-width:440px;line-height:1.6;margin-top:10px;}
+
+/* ===================== ANIMACIONES =====================
+   Estado base = VISIBLE. La entrada anima SOLO la posición (sin opacidad),
+   de modo que el contenido nunca queda invisible aunque la animación se pause. */
+@keyframes piso-fade-up{from{transform:translateY(18px);}to{transform:none;}}
+@media (prefers-reduced-motion:no-preference){
+  .view.active .anim,
+  .view.active .metric,
+  .view.active .quick a{animation:piso-fade-up .6s var(--piso-ease-out);}
+  .view.active .anim-2{animation-delay:.05s;}
+  .view.active .anim-3{animation-delay:.1s;}
+  .view.active .anim-4{animation-delay:.15s;}
+  .view.active .metric:nth-child(2){animation-delay:.05s;}
+  .view.active .metric:nth-child(3){animation-delay:.1s;}
+  .view.active .metric:nth-child(4){animation-delay:.15s;}
+}
+
+@media (max-width:1080px){
+  .metrics{grid-template-columns:repeat(2,1fr);}
+  .quick{grid-template-columns:repeat(2,1fr);}
+}
+@media (max-width:620px){
+  .metrics,.quick{grid-template-columns:1fr;}
+  .main{padding:34px 20px 60px;}
+  .nav{padding:12px 16px;}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition-duration:.001s!important;}
+  .piso-bg .layer{transition:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== FONDO DE HUMO ===================== -->
+<div class="piso-bg" aria-hidden="true">
+  <video class="layer smoke" src="assets/humo.mp4" muted loop playsinline preload="auto" autoplay></video>
+</div>
+
+<div class="shell">
+
+  <!-- ===================== NAVBAR ===================== -->
+  <nav class="nav">
+    <div class="nav__brand">
+      <img src="assets/logo-white.png" alt="Piso Cuatro">
+      <span class="sep"></span>
+      <span class="tag">Panel<br>Administrativo</span>
+    </div>
+
+    <div class="nav__rail" id="rail">
+      <!-- Platform -->
+      <div class="nav__group" data-group="Platform">
+        <button class="nav__item" data-view="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/></svg>
+          <span class="lbl">Dashboard</span><span class="tip">Dashboard</span>
+        </button>
+      </div>
+      <div class="nav__divider"></div>
+      <!-- Operación -->
+      <div class="nav__group" data-group="Operación">
+        <button class="nav__item" data-view="cocina">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.29-2.26.9-3.2"/></svg>
+          <span class="lbl">Cocina</span><span class="tip">Cocina</span>
+        </button>
+        <button class="nav__item" data-view="bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 3h6M10 3v5.5L5.5 18a1.4 1.4 0 0 0 1.3 2h10.4a1.4 1.4 0 0 0 1.3-2L14 8.5V3"/><path d="M7.4 13h9.2"/></svg>
+          <span class="lbl">Bar</span><span class="tip">Bar</span>
+        </button>
+        <button class="nav__item" data-view="meseros">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 1 0-12 0c0 7-2 9-2 9h16s-2-2-2-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="lbl">Meseros</span><span class="tip">Meseros</span>
+        </button>
+      </div>
+      <div class="nav__divider"></div>
+      <!-- Administración -->
+      <div class="nav__group" data-group="Administración">
+        <button class="nav__item active" data-view="panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7.5" height="7.5" rx="1.4"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.4"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.4"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.4"/></svg>
+          <span class="lbl">Panel</span><span class="tip">Panel</span>
+        </button>
+        <button class="nav__item" data-view="productos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 11h16v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M3 8.5a2.5 2.5 0 0 1 2.5-2.5h13A2.5 2.5 0 0 1 21 8.5V11H3z"/><path d="M12 6V4M9 6c0-1.5 3-1.5 3 0M15 6c0-1.5-3-1.5-3 0"/></svg>
+          <span class="lbl">Productos</span><span class="tip">Productos</span>
+        </button>
+        <button class="nav__item" data-view="categorias">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h6.3a2 2 0 0 1 1.4.6l8 8a1.8 1.8 0 0 1 0 2.5l-5.1 5.1a1.8 1.8 0 0 1-2.5 0l-8-8A2 2 0 0 1 4 12.8z"/><circle cx="8" cy="11" r="1.4"/></svg>
+          <span class="lbl">Categorías</span><span class="tip">Categorías</span>
+        </button>
+        <button class="nav__item" data-view="mesas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M20 17v4M17 20h4"/></svg>
+          <span class="lbl">Mesas y QR</span><span class="tip">Mesas y QR</span>
+        </button>
+        <button class="nav__item" data-view="usuarios">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 5.2a3 3 0 0 1 0 5.6M17.5 20a5.5 5.5 0 0 0-2.8-4.8"/></svg>
+          <span class="lbl">Usuarios</span><span class="tip">Usuarios</span>
+        </button>
+        <button class="nav__item" data-view="pedidos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 4h8a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2V6a2 2 0 0 1 2-2z"/><path d="M9 9h6M9 13h4"/></svg>
+          <span class="lbl">Pedidos</span><span class="tip">Pedidos</span>
+        </button>
+        <button class="nav__item" data-view="estadisticas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 17v-5M12.5 17V8M17 17v-8"/></svg>
+          <span class="lbl">Estadísticas</span><span class="tip">Estadísticas</span>
+        </button>
+        <button class="nav__item" data-view="config">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.2A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 14.9a1.6 1.6 0 0 0-1.5-1H1.4a2 2 0 0 1 0-4h.2A1.6 1.6 0 0 0 3 8.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 8.6 5 1.6 1.6 0 0 0 9.6 3.5V3.4a2 2 0 0 1 4 0v.2a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8 1.6 1.6 0 0 0 1.5 1h.1a2 2 0 0 1 0 4h-.2a1.6 1.6 0 0 0-1.5 1z"/></svg>
+          <span class="lbl">Configuración</span><span class="tip">Configuración</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="nav__utils">
+      <button class="icon-btn" onclick="window.open('https://github.com/laravel/livewire-starter-kit','_blank')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.3 0C6.9 2.3 5.8 2.6 5.8 2.6a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4.4 9c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V20"/></svg>
+        <span class="tip">Repository</span>
+      </button>
+      <button class="icon-btn" onclick="window.open('https://laravel.com/docs','_blank')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg>
+        <span class="tip">Documentation</span>
+      </button>
+
+      <div class="user" id="user">
+        <button class="user__btn" id="userBtn">
+          <span class="user__av">AP</span>
+          <span class="user__name">Administrador Piso 4</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="user__menu">
+          <div class="user__head">
+            <span class="user__av">AP</span>
+            <div>
+              <div class="nm">Administrador Piso 4</div>
+              <div class="em">admin@pisocuatro.com</div>
+            </div>
+          </div>
+          <div class="user__rule"></div>
+          <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8M4.6 9a1.6 1.6 0 0 0-.3-1.8"/></svg> Configuración</a>
+          <div class="user__rule"></div>
+          <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg> Cerrar sesión</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="main">
+
+    <!-- ===== VIEW: PANEL (dashboard completo) ===== -->
+    <section class="view active" data-view="panel" data-screen-label="Panel de Control">
+      <div class="anim anim-1">
+        <p class="kicker">Sistema</p>
+        <div class="head-row">
+          <h1 class="title serif">Panel de Control</h1>
+          <button class="btn-secondary" onclick="this.querySelector('svg').style.transition='none';setTimeout(()=>this.querySelector('svg').style.transition='',50)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+            Actualizar
+          </button>
+        </div>
+      </div>
+      <div class="head-rule anim anim-1"></div>
+
+      <!-- Métricas -->
+      <div class="metrics">
+        <div class="metric" style="--accent:var(--v-success)">
+          <div class="metric__top">
+            <span class="metric__label">Ventas de hoy</span>
+            <span class="metric__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20"/><path d="M17 5.5c-1-1.2-2.8-2-5-2-2.8 0-5 1.3-5 3.3 0 4.7 10 2.3 10 7 0 2-2.2 3.4-5 3.4-2.4 0-4.4-.9-5.3-2.2"/></svg></span>
+          </div>
+          <div class="metric__val metal">$0</div>
+          <div class="metric__foot"><span class="metric__dot"></span> Ingresos acumulados del día</div>
+        </div>
+
+        <div class="metric" style="--accent:var(--v-info)">
+          <div class="metric__top">
+            <span class="metric__label">Mesas activas</span>
+            <span class="metric__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="11" rx="2"/><path d="M7 19v-4M17 19v-4M5 15h14"/></svg></span>
+          </div>
+          <div class="metric__val metal">1</div>
+          <div class="metric__foot"><span class="metric__dot"></span> En servicio ahora mismo</div>
+        </div>
+
+        <div class="metric" style="--accent:var(--v-warning)">
+          <div class="metric__top">
+            <span class="metric__label">Ítems en preparación</span>
+            <span class="metric__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.29-2.26.9-3.2"/></svg></span>
+          </div>
+          <div class="metric__val metal">0</div>
+          <div class="metric__foot"><span class="metric__dot"></span> En cocina y barra</div>
+        </div>
+
+        <div class="metric" style="--accent:var(--v-default)">
+          <div class="metric__top">
+            <span class="metric__label">Pedidos de hoy</span>
+            <span class="metric__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 4h8a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2V6a2 2 0 0 1 2-2z"/><path d="M9 9h6M9 13h4"/></svg></span>
+          </div>
+          <div class="metric__val metal">3</div>
+          <div class="metric__foot"><span class="metric__dot"></span> Registrados desde la apertura</div>
+        </div>
+      </div>
+
+      <!-- Gestión Rápida -->
+      <div class="section-h anim">
+        <h2 class="serif">Gestión Rápida</h2>
+        <span class="line"></span>
+      </div>
+      <div class="quick">
+        <a href="#" data-go="productos">
+          <span class="quick__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 11h16v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M3 8.5a2.5 2.5 0 0 1 2.5-2.5h13A2.5 2.5 0 0 1 21 8.5V11H3z"/><path d="M12 6V4M9 6c0-1.5 3-1.5 3 0M15 6c0-1.5-3-1.5-3 0"/></svg></span>
+          <span class="quick__txt"><span class="t">Productos</span><span class="s">Carta y disponibilidad</span></span>
+          <svg class="quick__arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <a href="#" data-go="categorias">
+          <span class="quick__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h6.3a2 2 0 0 1 1.4.6l8 8a1.8 1.8 0 0 1 0 2.5l-5.1 5.1a1.8 1.8 0 0 1-2.5 0l-8-8A2 2 0 0 1 4 12.8z"/><circle cx="8" cy="11" r="1.4"/></svg></span>
+          <span class="quick__txt"><span class="t">Categorías</span><span class="s">Organización del menú</span></span>
+          <svg class="quick__arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <a href="#" data-go="mesas">
+          <span class="quick__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M20 17v4M17 20h4"/></svg></span>
+          <span class="quick__txt"><span class="t">Mesas y QR</span><span class="s">Códigos y disposición</span></span>
+          <svg class="quick__arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <a href="#" data-go="usuarios">
+          <span class="quick__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 5.2a3 3 0 0 1 0 5.6M17.5 20a5.5 5.5 0 0 0-2.8-4.8"/></svg></span>
+          <span class="quick__txt"><span class="t">Usuarios</span><span class="s">Equipo y permisos</span></span>
+          <svg class="quick__arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <a href="#" data-go="pedidos">
+          <span class="quick__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 4h8a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2V6a2 2 0 0 1 2-2z"/><path d="M9 9h6M9 13h4"/></svg></span>
+          <span class="quick__txt"><span class="t">Pedidos</span><span class="s">Comandas en curso</span></span>
+          <svg class="quick__arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <a href="#" data-go="estadisticas">
+          <span class="quick__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 20V4M4 20h16M8 17v-5M12.5 17V8M17 17v-8"/></svg></span>
+          <span class="quick__txt"><span class="t">Estadísticas</span><span class="s">Rendimiento del local</span></span>
+          <svg class="quick__arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <a href="#" data-go="config">
+          <span class="quick__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.2A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 14.9a1.6 1.6 0 0 0-1.5-1H1.4a2 2 0 0 1 0-4h.2A1.6 1.6 0 0 0 3 8.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 8.6 5l.05-.02A1.6 1.6 0 0 0 9.6 3.5V3.4a2 2 0 0 1 4 0v.2a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V10a1.6 1.6 0 0 0 1.5 1h.1a2 2 0 0 1 0 4h-.2a1.6 1.6 0 0 0-1.5 1z"/></svg></span>
+          <span class="quick__txt"><span class="t">Configuración</span><span class="s">Ajustes del sistema</span></span>
+          <svg class="quick__arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- ===== VIEWS GENÉRICAS (otros módulos) ===== -->
+    <!-- se generan por JS -->
+    <div id="moduleHost"></div>
+
+  </main>
+</div>
+
+<script>
+(function(){
+  const railItems = Array.from(document.querySelectorAll('.nav__item'));
+  const main = document.querySelector('.main');
+  const panelView = document.querySelector('.view[data-view="panel"]');
+  const host = document.getElementById('moduleHost');
+
+  // metadata de módulos (kicker, título, descripción, ícono)
+  const MOD = {
+    dashboard:   {k:'Inicio',         t:'Dashboard',     d:'Vista general de tu operación. El resumen en vivo del restaurante se centraliza en el Panel de Control.', go:'panel'},
+    cocina:      {k:'Operación',      t:'Cocina',        d:'Tablero de comandas para la cocina. Aquí el equipo gestiona los ítems en preparación en tiempo real.'},
+    bar:         {k:'Operación',      t:'Bar',           d:'Tablero de la barra. Coordina cócteles y bebidas con el flujo de servicio de las mesas.'},
+    meseros:     {k:'Operación',      t:'Meseros',       d:'Panel de servicio para el equipo de salón: llamados de mesa, entregas y atención al cliente.'},
+    productos:   {k:'Administración', t:'Productos',     d:'Gestiona la carta completa: platos, precios, fotografías y disponibilidad del menú.'},
+    categorias:  {k:'Administración', t:'Categorías',    d:'Organiza la estructura del menú agrupando productos por categorías y secciones.'},
+    mesas:       {k:'Administración', t:'Mesas y QR',    d:'Administra la disposición de mesas y genera los códigos QR de cada una para el menú digital.'},
+    usuarios:    {k:'Administración', t:'Usuarios',      d:'Gestiona el equipo, sus roles y permisos de acceso a cada módulo del sistema.'},
+    pedidos:     {k:'Administración', t:'Pedidos',       d:'Historial y seguimiento de todas las comandas y pedidos registrados en el sistema.'},
+    estadisticas:{k:'Administración', t:'Estadísticas',  d:'Reportes y métricas de rendimiento del local: ventas, productos más vendidos y tendencias.'},
+    config:      {k:'Administración', t:'Configuración', d:'Ajustes generales del sistema, preferencias del restaurante y parámetros operativos.'}
+  };
+
+  const ICONS = {
+    dashboard:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/>',
+    cocina:'<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.29-2.26.9-3.2"/>',
+    bar:'<path d="M9 3h6M10 3v5.5L5.5 18a1.4 1.4 0 0 0 1.3 2h10.4a1.4 1.4 0 0 0 1.3-2L14 8.5V3"/><path d="M7.4 13h9.2"/>',
+    meseros:'<path d="M18 8a6 6 0 1 0-12 0c0 7-2 9-2 9h16s-2-2-2-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+    productos:'<path d="M4 11h16v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M3 8.5a2.5 2.5 0 0 1 2.5-2.5h13A2.5 2.5 0 0 1 21 8.5V11H3z"/><path d="M12 6V4M9 6c0-1.5 3-1.5 3 0M15 6c0-1.5-3-1.5-3 0"/>',
+    categorias:'<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h6.3a2 2 0 0 1 1.4.6l8 8a1.8 1.8 0 0 1 0 2.5l-5.1 5.1a1.8 1.8 0 0 1-2.5 0l-8-8A2 2 0 0 1 4 12.8z"/><circle cx="8" cy="11" r="1.4"/>',
+    mesas:'<rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M20 17v4M17 20h4"/>',
+    usuarios:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 5.2a3 3 0 0 1 0 5.6M17.5 20a5.5 5.5 0 0 0-2.8-4.8"/>',
+    pedidos:'<path d="M8 4h8a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2V6a2 2 0 0 1 2-2z"/><path d="M9 9h6M9 13h4"/>',
+    estadisticas:'<path d="M4 20V4M4 20h16M8 17v-5M12.5 17V8M17 17v-8"/>',
+    config:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8 2 2 0 1 1-2.8 2.8 1.6 1.6 0 0 0-2.7 1.1 2 2 0 0 1-4 0A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3 2 2 0 1 1-2.8-2.8A1.6 1.6 0 0 0 3 14.9a2 2 0 0 1 0-4A1.6 1.6 0 0 0 4.6 9a2 2 0 1 1 2.8-2.8 1.6 1.6 0 0 0 2.6-1A2 2 0 0 1 13.6 3.4a1.6 1.6 0 0 0 2.8 1.7 2 2 0 1 1 2.8 2.8A1.6 1.6 0 0 0 21 11a2 2 0 0 1 0 4z"/>'
+  };
+
+  let current = 'panel';
+  let switchToken = 0;
+
+  function buildModule(key){
+    const m = MOD[key];
+    const el = document.createElement('section');
+    el.className = 'view';
+    el.dataset.view = key;
+    el.setAttribute('data-screen-label', m.t);
+    el.innerHTML = `
+      <div class="anim anim-1">
+        <p class="kicker">${m.k}</p>
+        <div class="head-row"><h1 class="title serif">${m.t}</h1></div>
+      </div>
+      <div class="head-rule anim anim-1"></div>
+      <div class="module anim anim-2">
+        <div class="module__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor">${ICONS[key]}</svg></div>
+        <h2 class="serif" style="font-size:24px;font-weight:500;">${m.t}</h2>
+        <p>${m.d}</p>
+      </div>`;
+    return el;
+  }
+
+  function switchTo(key){
+    if(key === current) return;
+    current = key;
+    const token = ++switchToken;
+    const outgoing = document.querySelector('.view.active');
+    if(outgoing){
+      outgoing.style.transition='opacity .28s var(--piso-ease)';
+      outgoing.style.opacity='0';
+    }
+    setTimeout(()=>{
+      if(token !== switchToken) return; // un clic más reciente tomó el control
+      document.querySelectorAll('.view').forEach(v=>{v.classList.remove('active');v.style.opacity='';v.style.transition='';});
+      let target;
+      if(key === 'panel'){
+        target = panelView;
+      } else {
+        target = document.querySelector(`.view[data-view="${key}"]`);
+        if(!target){ target = buildModule(key); host.appendChild(target); }
+      }
+      void target.offsetWidth;
+      target.classList.add('active');
+      window.scrollTo({top:0,behavior:'auto'});
+    }, outgoing ? 280 : 0);
+  }
+
+  // navbar: click
+  railItems.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.dataset.view;
+      // mover píldora activa (fluido)
+      railItems.forEach(b=>b.classList.remove('active'));
+      // si es 'dashboard', mapeamos su contenido a panel pero mantenemos su píldora
+      btn.classList.add('active');
+      const viewKey = (MOD[key] && MOD[key].go) ? MOD[key].go : key;
+      // para dashboard mostramos el panel pero conservando su pill — usamos un módulo propio
+      if(key === 'dashboard'){ switchTo('dashboard'); }
+      else { switchTo(key); }
+    });
+  });
+
+  // accesos rápidos -> activar módulo + píldora correspondiente
+  document.querySelectorAll('[data-go]').forEach(a=>{
+    a.addEventListener('click', e=>{
+      e.preventDefault();
+      const key = a.dataset.go;
+      const btn = railItems.find(b=>b.dataset.view===key);
+      if(btn){ railItems.forEach(b=>b.classList.remove('active')); btn.classList.add('active'); btn.scrollIntoView({inline:'center',block:'nearest'}); }
+      switchTo(key);
+    });
+  });
+
+  // menú usuario
+  const user = document.getElementById('user');
+  document.getElementById('userBtn').addEventListener('click', e=>{e.stopPropagation();user.classList.toggle('open');});
+  document.addEventListener('click', ()=>user.classList.remove('open'));
+
+  // asegurar reproducción del video de humo
+  const vid = document.querySelector('.smoke');
+  if(vid){ vid.play().catch(()=>{}); }
+})();
+</script>
+</body>
+</html>

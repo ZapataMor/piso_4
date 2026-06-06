@@ -1,9 +1,7 @@
 <?php
 
+use App\Concerns\ResolvesParticipant;
 use App\Models\Mesa;
-use App\Models\SessionParticipant;
-use App\Services\WaiterService;
-use Flux\Flux;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -12,6 +10,8 @@ use Livewire\Component;
 
 new #[Layout('layouts.customer')] #[Title('Mis pedidos · Piso Cuatro')] class extends Component
 {
+    use ResolvesParticipant;
+
     public Mesa $mesa;
 
     public function mount(Mesa $mesa): void
@@ -19,34 +19,10 @@ new #[Layout('layouts.customer')] #[Title('Mis pedidos · Piso Cuatro')] class e
         $this->mesa = $mesa;
     }
 
-    private function participant(): SessionParticipant
-    {
-        $token = request()->cookie('participant_token');
-        $session = $this->mesa->activeSession;
-
-        $participant = ($token && $session)
-            ? SessionParticipant::where('token', $token)
-                ->where('restaurant_session_id', $session->id)
-                ->first()
-            : null;
-
-        abort_unless($participant, 403);
-
-        return $participant;
-    }
-
     #[Computed]
     public function orders(): Collection
     {
         return $this->participant()->orders()->with('items')->latest()->get();
-    }
-
-    public function callWaiter(WaiterService $waiters): void
-    {
-        $participant = $this->participant();
-        $waiters->call($participant->session, $participant);
-
-        Flux::toast(text: 'Un mesero viene en camino 🔔', variant: 'success', duration: 2000);
     }
 }; ?>
 
@@ -61,58 +37,63 @@ new #[Layout('layouts.customer')] #[Title('Mis pedidos · Piso Cuatro')] class e
     ];
 @endphp
 
-<div class="flex min-h-svh flex-col">
-    <header class="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-800 bg-zinc-950/90 px-5 py-3 backdrop-blur">
+<div class="flex min-h-svh flex-col"
+     x-data
+     x-init="window.Echo && window.Echo.channel('mesa.{{ $mesa->qr_token }}').listen('.order.item.status', () => $wire.$refresh())">
+    <header class="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-800 bg-zinc-950/90 px-5 py-4 backdrop-blur">
         <div>
-            <p class="text-xs uppercase tracking-widest text-amber-400/80">Mesa {{ $mesa->numero }}</p>
-            <h1 class="text-lg font-semibold">Mis pedidos</h1>
+            <p class="header-subtitle">Mesa {{ $mesa->numero }}</p>
+            <h1 class="text-lg font-semibold text-zinc-100">Mis pedidos</h1>
         </div>
         <div class="flex items-center gap-2">
-            <button type="button" wire:click="callWaiter"
-                class="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-200 active:scale-95">
+            <button type="button" wire:click="callWaiter" class="btn-secondary text-sm">
                 🔔 Mesero
             </button>
-            <a href="{{ route('mesa.menu', $mesa) }}" wire:navigate
-               class="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-200 active:scale-95">
-                Volver al menú
+            <a href="{{ route('mesa.bill', $mesa) }}" wire:navigate class="btn-primary text-sm">
+                Cuenta
+            </a>
+            <a href="{{ route('mesa.menu', $mesa) }}" wire:navigate class="btn-secondary text-sm">
+                Menú
             </a>
         </div>
     </header>
 
     <main class="flex-1 space-y-4 px-5 py-6">
         @forelse ($this->orders as $order)
-            <article wire:key="order-{{ $order->id }}" class="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-                <div class="flex items-center justify-between">
-                    <p class="font-semibold">Pedido #{{ $order->numero }}</p>
-                    <span class="rounded-full px-3 py-1 text-xs font-medium {{ $colorMap[$order->estado->color()] ?? 'bg-zinc-700' }}">
+            <article wire:key="order-{{ $order->id }}" class="card-base">
+                <div class="flex items-center justify-between mb-4">
+                    <p class="font-semibold text-zinc-100">Pedido #{{ $order->numero }}</p>
+                    <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $colorMap[$order->estado->color()] ?? 'bg-zinc-700 text-zinc-300' }}">
                         {{ $order->estado->label() }}
                     </span>
                 </div>
 
-                <ul class="mt-3 space-y-2">
+                <ul class="space-y-2 py-3">
                     @foreach ($order->items as $item)
-                        <li class="flex items-center justify-between gap-3 text-sm">
-                            <span class="min-w-0">
-                                <span class="text-zinc-300">{{ $item->quantity }}×</span>
-                                {{ $item->product_name }}
-                                @if ($item->notes)<span class="block text-xs text-zinc-500">{{ $item->notes }}</span>@endif
+                        <li class="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-zinc-800 last:border-0">
+                            <span class="min-w-0 flex-1">
+                                <span class="text-muted-sm">{{ $item->quantity }}×</span>
+                                <span class="text-zinc-300">{{ $item->product_name }}</span>
+                                @if ($item->notes)<span class="block text-xs text-muted-sm mt-0.5">{{ $item->notes }}</span>@endif
                             </span>
-                            <span class="shrink-0 rounded-full px-2 py-0.5 text-xs {{ $colorMap[$item->estado->color()] ?? 'bg-zinc-700' }}">
+                            <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold {{ $colorMap[$item->estado->color()] ?? 'bg-zinc-700 text-zinc-300' }}">
                                 {{ $item->estado->label() }}
                             </span>
                         </li>
                     @endforeach
                 </ul>
 
-                <div class="mt-3 flex items-center justify-between border-t border-zinc-800 pt-3">
-                    <span class="text-sm text-zinc-400">Subtotal</span>
-                    <span class="font-semibold">{{ $order->subtotal_formatted }}</span>
+                <div class="flex items-center justify-between border-t border-zinc-800 pt-3 mt-3">
+                    <span class="text-sm text-muted">Subtotal</span>
+                    <span class="font-semibold text-zinc-100">{{ $order->subtotal_formatted }}</span>
                 </div>
             </article>
         @empty
-            <div class="py-16 text-center text-zinc-500">
-                <p>Aún no has enviado pedidos.</p>
-                <a href="{{ route('mesa.menu', $mesa) }}" wire:navigate class="mt-3 inline-block text-amber-400">Ir al menú</a>
+            <div class="py-16 text-center">
+                <p class="text-muted mb-4">Aún no has enviado pedidos</p>
+                <a href="{{ route('mesa.menu', $mesa) }}" wire:navigate class="btn-primary inline-block">
+                    ← Volver al menú
+                </a>
             </div>
         @endforelse
     </main>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+    <head>
+        @include('partials.head')
+    </head>
+    <body class="min-h-screen">
+        <x-smoke-bg />
+        <flux:sidebar sticky collapsible="mobile" class="relative z-10 border-e border-white/10 bg-[#0b0b0d]/80 backdrop-blur-xl">
+            <flux:sidebar.header>
+                <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center px-1.5 py-1">
+                    <img src="{{ asset('piso-cuatro-menu/assets/logo-white.png') }}" alt="Piso Cuatro" class="h-9 w-auto" />
+                </a>
+                <flux:sidebar.collapse class="lg:hidden" />
+            </flux:sidebar.header>
+
+            <flux:sidebar.nav>
+                <flux:sidebar.group :heading="__('Platform')" class="grid">
+                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
+                        {{ __('Dashboard') }}
+                    </flux:sidebar.item>
+                </flux:sidebar.group>
+
+                @php($navUser = auth()->user())
+
+                @if ($navUser?->isAdmin() || $navUser?->hasRole('cocina') || $navUser?->hasRole('bar') || $navUser?->hasRole('mesero'))
+                    <flux:sidebar.group :heading="__('Operación')" class="grid">
+                        @if ($navUser?->isAdmin() || $navUser?->hasRole('cocina'))
+                            <flux:sidebar.item icon="fire" :href="route('kitchen.board')" :current="request()->routeIs('kitchen.board')" wire:navigate>
+                                {{ __('Cocina') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if ($navUser?->isAdmin() || $navUser?->hasRole('bar'))
+                            <flux:sidebar.item icon="beaker" :href="route('bar.board')" :current="request()->routeIs('bar.board')" wire:navigate>
+                                {{ __('Bar') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if ($navUser?->isAdmin() || $navUser?->hasRole('mesero'))
+                            <flux:sidebar.item icon="bell-alert" :href="route('waiter.dashboard')" :current="request()->routeIs('waiter.dashboard')" wire:navigate>
+                                {{ __('Meseros') }}
+                            </flux:sidebar.item>
+                        @endif
+                    </flux:sidebar.group>
+                @endif
+
+                @if ($navUser?->isAdmin())
+                    <flux:sidebar.group :heading="__('Administración')" class="grid">
+                        <flux:sidebar.item icon="rectangle-group" :href="route('admin.dashboard')" :current="request()->routeIs('admin.dashboard')" wire:navigate>
+                            {{ __('Panel') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="cake" :href="route('admin.products')" :current="request()->routeIs('admin.products')" wire:navigate>
+                            {{ __('Productos') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="tag" :href="route('admin.categories')" :current="request()->routeIs('admin.categories')" wire:navigate>
+                            {{ __('Categorías') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="qr-code" :href="route('admin.mesas.index')" :current="request()->routeIs('admin.mesas.*')" wire:navigate>
+                            {{ __('Mesas y QR') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="users" :href="route('admin.users')" :current="request()->routeIs('admin.users')" wire:navigate>
+                            {{ __('Usuarios') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('admin.orders')" :current="request()->routeIs('admin.orders')" wire:navigate>
+                            {{ __('Pedidos') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="chart-bar" :href="route('admin.statistics')" :current="request()->routeIs('admin.statistics')" wire:navigate>
+                            {{ __('Estadísticas') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="cog-6-tooth" :href="route('admin.settings')" :current="request()->routeIs('admin.settings')" wire:navigate>
+                            {{ __('Configuración') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endif
+            </flux:sidebar.nav>
+
+            <flux:spacer />
+
+            <flux:sidebar.nav>
+                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
+                    {{ __('Repository') }}
+                </flux:sidebar.item>
+
+                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
+                    {{ __('Documentation') }}
+                </flux:sidebar.item>
+            </flux:sidebar.nav>
+
+            <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
+        </flux:sidebar>
+
+        <!-- Mobile User Menu -->
+        <flux:header class="relative z-10 lg:hidden border-b border-white/10 bg-[#0b0b0d]/80 backdrop-blur-xl">
+            <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
+
+            <flux:spacer />
+
+            <flux:dropdown position="top" align="end">
+                <flux:profile
+                    :initials="auth()->user()->initials()"
+                    icon-trailing="chevron-down"
+                />
+
+                <flux:menu>
+                    <flux:menu.radio.group>
+                        <div class="p-0 text-sm font-normal">
+                            <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
+                                <flux:avatar
+                                    :name="auth()->user()->name"
+                                    :initials="auth()->user()->initials()"
+                                />
+
+                                <div class="grid flex-1 text-start text-sm leading-tight">
+                                    <flux:heading class="truncate">{{ auth()->user()->name }}</flux:heading>
+                                    <flux:text class="truncate">{{ auth()->user()->email }}</flux:text>
+                                </div>
+                            </div>
+                        </div>
+                    </flux:menu.radio.group>
+
+                    <flux:menu.separator />
+
+                    <flux:menu.radio.group>
+                        <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
+                            {{ __('Settings') }}
+                        </flux:menu.item>
+                    </flux:menu.radio.group>
+
+                    <flux:menu.separator />
+
+                    <form method="POST" action="{{ route('logout') }}" class="w-full">
+                        @csrf
+                        <flux:menu.item
+                            as="button"
+                            type="submit"
+                            icon="arrow-right-start-on-rectangle"
+                            class="w-full cursor-pointer"
+                            data-test="logout-button"
+                        >
+                            {{ __('Log out') }}
+                        </flux:menu.item>
+                    </form>
+                </flux:menu>
+            </flux:dropdown>
+        </flux:header>
+
+        {{ $slot }}
+
+        @persist('toast')
+            <flux:toast.group>
+                <flux:toast />
+            </flux:toast.group>
+        @endpersist
+
+        @fluxScripts
+    </body>
+</html>

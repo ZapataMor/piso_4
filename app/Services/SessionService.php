@@ -37,10 +37,13 @@ class SessionService
 
             $session = RestaurantSession::create([
                 'mesa_id' => $mesa->id,
-                'codigo' => $this->generateCodigo(),
+                'codigo' => 'TMP-'.bin2hex(random_bytes(8)),
                 'estado' => SessionStatus::Activa,
                 'fecha_inicio' => now(),
             ]);
+
+            // Código definitivo basado en el id: único y sin condición de carrera.
+            $session->update(['codigo' => sprintf('S-%s-%04d', now()->format('Ymd'), $session->id)]);
 
             if ($mesa->estado !== TableStatus::FueraDeServicio) {
                 $mesa->update(['estado' => TableStatus::Ocupada]);
@@ -70,15 +73,6 @@ class SessionService
 
             $session->mesa->update(['estado' => TableStatus::Disponible]);
         });
-    }
-
-    /** Código legible de sesión para el mensaje de WhatsApp: S-YYYYMMDD-#### */
-    private function generateCodigo(): string
-    {
-        $date = now()->format('Ymd');
-        $sequence = RestaurantSession::whereDate('created_at', now()->toDateString())->count() + 1;
-
-        return sprintf('S-%s-%04d', $date, $sequence);
     }
 
     private function generateParticipantToken(): string
