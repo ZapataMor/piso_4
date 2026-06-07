@@ -1,67 +1,70 @@
 <x-layouts::app :title="__('Mesas y QR')">
-    <div class="flex flex-col gap-6">
-        <div class="flex items-center justify-between">
-            <div>
-                <flux:heading size="xl">Mesas y QR</flux:heading>
-                <flux:text class="mt-1">Administra las mesas y sus códigos QR.</flux:text>
+    <div>
+        <div class="piso-in">
+            <p class="kicker">Administración</p>
+            <div class="head-row mt-2.5 flex items-end justify-between gap-6">
+                <div>
+                    <h1 class="header-title">Mesas y QR</h1>
+                    <p class="mt-2 text-muted-sm">Administra las mesas y sus códigos QR.</p>
+                </div>
+                <a href="{{ route('admin.mesas.create') }}" wire:navigate class="btn-primary shrink-0">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="size-4" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    Nueva mesa
+                </a>
             </div>
-            <flux:button :href="route('admin.mesas.create')" icon="plus" variant="primary" wire:navigate>
-                Nueva mesa
-            </flux:button>
         </div>
+        <div class="piso-rule my-7"></div>
 
         @if (session('status'))
-            <flux:callout icon="check-circle" variant="success" class="!my-0">
+            <flux:callout icon="check-circle" variant="success" class="!my-0 piso-in piso-in-1">
                 <flux:callout.text>{{ session('status') }}</flux:callout.text>
             </flux:callout>
         @endif
 
-        <div class="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
-            <table class="w-full text-left text-sm">
-                <thead class="bg-zinc-50 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                    <tr>
-                        <th class="px-4 py-3 font-medium">#</th>
-                        <th class="px-4 py-3 font-medium">Nombre</th>
-                        <th class="px-4 py-3 font-medium">Estado</th>
-                        <th class="px-4 py-3 font-medium">Capacidad</th>
-                        <th class="px-4 py-3 text-right font-medium">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    @forelse ($mesas as $mesa)
-                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                            <td class="px-4 py-3 font-semibold">{{ $mesa->numero }}</td>
-                            <td class="px-4 py-3">{{ $mesa->nombre ?? '—' }}</td>
-                            <td class="px-4 py-3">
-                                <flux:badge size="sm" :color="$mesa->estado->color()">{{ $mesa->estado->label() }}</flux:badge>
-                            </td>
-                            <td class="px-4 py-3">{{ $mesa->capacidad ?? '—' }}</td>
-                            <td class="px-4 py-3">
-                                <div class="flex items-center justify-end gap-2">
-                                    <flux:button size="sm" :href="route('admin.mesas.edit', $mesa)" icon="pencil-square" variant="ghost" wire:navigate>
-                                        Editar
-                                    </flux:button>
-                                    <flux:button size="sm" :href="route('admin.mesas.qr', $mesa)" icon="arrow-down-tray" variant="ghost">
-                                        QR
-                                    </flux:button>
-                                    <form method="POST" action="{{ route('admin.mesas.destroy', $mesa) }}"
-                                          onsubmit="return confirm('¿Eliminar la mesa #{{ $mesa->numero }}?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <flux:button size="sm" type="submit" icon="trash" variant="danger">Eliminar</flux:button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="px-4 py-10 text-center text-zinc-500">
-                                Aún no hay mesas. Crea la primera con “Nueva mesa”.
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+        <div class="ptable piso-in piso-in-2 mt-6" style="--ptpl: 96px minmax(240px, 1fr) 160px 128px 132px;">
+            <div class="ptable__head">
+                <div class="pth">Mesa</div>
+                <div class="pth">Nombre</div>
+                <div class="pth">Estado</div>
+                <div class="pth">Capacidad</div>
+                <div class="pth pth--r">Acciones</div>
+            </div>
+
+            @forelse ($mesas as $mesa)
+                <div class="prow">
+                    <div class="pname">
+                        <span class="pmono"><span>{{ $mesa->numero }}</span></span>
+                    </div>
+                    <div class="pstack">
+                        <span class="pname__t">{{ $mesa->nombre ?? 'Mesa #' . $mesa->numero }}</span>
+                        <span class="pname__sub">QR público de acceso al menú</span>
+                    </div>
+                    <div><span class="pstatus">{{ $mesa->estado->label() }}</span></div>
+                    <div><span class="pcat">{{ $mesa->capacidad ?? '—' }} personas</span></div>
+                    <div class="pacts">
+                        <a href="{{ route('admin.mesas.edit', $mesa) }}" wire:navigate class="pact pact--edit" title="Editar">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                        </a>
+                        <a href="{{ route('admin.mesas.qr', $mesa) }}" class="pact pact--qr" title="Descargar QR">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+                        </a>
+                        <form method="POST" action="{{ route('admin.mesas.destroy', $mesa) }}" onsubmit="return confirm('¿Eliminar la mesa #{{ $mesa->numero }}?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="pact pact--del" title="Eliminar">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6"/><path d="M10 11v6M14 11v6"/></svg>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @empty
+                <div class="pempty">Aún no hay mesas. Crea la primera con "Nueva mesa".</div>
+            @endforelse
+        </div>
+
+        <div class="pfoot piso-in piso-in-2">
+            @php($availableMesas = $mesas->filter(fn ($mesa) => $mesa->estado->value === 'disponible')->count())
+            Mostrando <b>{{ $mesas->count() }}</b> mesas · <b>{{ $availableMesas }}</b> disponibles
         </div>
     </div>
 </x-layouts::app>

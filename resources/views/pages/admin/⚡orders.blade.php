@@ -5,6 +5,7 @@ use App\Enums\OrderStatus;
 use App\Models\Order;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -13,6 +14,14 @@ new #[Title('Pedidos · Piso 4')] class extends Component
     use AdminOnly;
 
     public string $filter = 'all';
+
+    /** Reverb: refresca la lista al llegar pedidos nuevos o cambios de estado. */
+    #[On('echo-private:waiters,.order.placed')]
+    #[On('echo-private:waiters,.order.item.status')]
+    public function onRealtime(): void
+    {
+        unset($this->orders, $this->totalCount);
+    }
 
     #[Computed]
     public function orders(): Collection
@@ -23,6 +32,12 @@ new #[Title('Pedidos · Piso 4')] class extends Component
             ->latest('placed_at')
             ->limit(80)
             ->get();
+    }
+
+    #[Computed]
+    public function totalCount(): int
+    {
+        return Order::count();
     }
 
     public function setFilter(string $filter): void
@@ -41,52 +56,63 @@ new #[Title('Pedidos · Piso 4')] class extends Component
     'red' => 'bg-red-500/20 text-red-700 dark:text-red-300',
 ])
 
-<div class="flex flex-col gap-6">
-    <flux:heading size="xl">Pedidos</flux:heading>
+<div>
+    <div class="piso-in">
+        <p class="kicker">Administración</p>
+        <div class="head-row mt-2.5 flex items-end justify-between gap-6">
+            <h1 class="header-title">Pedidos</h1>
+        </div>
+    </div>
+    <div class="piso-rule my-7"></div>
 
-    {{-- Filtros --}}
-    <div class="flex flex-wrap gap-2">
-        @php($filters = array_merge(['all' => 'Todos'], collect(OrderStatus::cases())->mapWithKeys(fn ($s) => [$s->value => $s->label()])->all()))
-        @foreach ($filters as $value => $label)
-            <button type="button" wire:click="setFilter('{{ $value }}')"
-                class="rounded-full border px-3 py-1.5 text-sm transition {{ $filter === $value ? 'border-amber-400 bg-amber-500/10 text-amber-600 dark:text-amber-300' : 'border-zinc-300 text-zinc-500 dark:border-zinc-700' }}">
-                {{ $label }}
-            </button>
-        @endforeach
+    <div class="ptoolbar piso-in piso-in-1">
+        <div class="pchips">
+            @php($filters = array_merge(['all' => 'Todos'], collect(OrderStatus::cases())->mapWithKeys(fn ($s) => [$s->value => $s->label()])->all()))
+            @foreach ($filters as $value => $label)
+                <button type="button" wire:click="setFilter('{{ $value }}')" class="pchip {{ $filter === $value ? 'active' : '' }}">
+                    {{ $label }}
+                </button>
+            @endforeach
+        </div>
     </div>
 
-    <div class="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
-        <table class="w-full text-left text-sm">
-            <thead class="bg-zinc-50 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                <tr>
-                    <th class="px-4 py-3 font-medium">Pedido</th>
-                    <th class="px-4 py-3 font-medium">Mesa</th>
-                    <th class="px-4 py-3 font-medium">Cliente</th>
-                    <th class="px-4 py-3 font-medium">Ítems</th>
-                    <th class="px-4 py-3 font-medium">Estado</th>
-                    <th class="px-4 py-3 font-medium">Total</th>
-                    <th class="px-4 py-3 font-medium">Hora</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                @forelse ($this->orders as $order)
-                    <tr wire:key="order-{{ $order->id }}" class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                        <td class="px-4 py-3 font-medium">#{{ $order->numero }}</td>
-                        <td class="px-4 py-3">{{ $order->mesa?->numero ?? '—' }}</td>
-                        <td class="px-4 py-3 text-zinc-500">{{ $order->participant?->nombre ?? '—' }}</td>
-                        <td class="px-4 py-3 text-zinc-500">{{ $order->items->count() }}</td>
-                        <td class="px-4 py-3">
-                            <span class="rounded-full px-2.5 py-1 text-xs font-medium {{ $colorMap[$order->estado->color()] ?? '' }}">
-                                {{ $order->estado->label() }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 font-medium">{{ $order->subtotal_formatted }}</td>
-                        <td class="px-4 py-3 text-zinc-500">{{ $order->placed_at?->format('d/m H:i') ?? '—' }}</td>
-                    </tr>
-                @empty
-                    <tr><td colspan="7" class="px-4 py-10 text-center text-zinc-500">No hay pedidos.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
+    <div class="ptable piso-in piso-in-2" style="--ptpl: minmax(190px, 1fr) 96px minmax(170px, 1fr) 96px 150px 122px 118px;">
+        <div class="ptable__head">
+            <div class="pth">Pedido</div>
+            <div class="pth">Mesa</div>
+            <div class="pth">Cliente</div>
+            <div class="pth">Ítems</div>
+            <div class="pth">Estado</div>
+            <div class="pth pth--r">Total</div>
+            <div class="pth pth--r">Hora</div>
+        </div>
+
+        @forelse ($this->orders as $order)
+            <div wire:key="order-{{ $order->id }}" class="prow">
+                <div class="pname">
+                    <span class="pmono"><span>#</span></span>
+                    <span class="pstack">
+                        <span class="pname__t">Pedido #{{ $order->numero }}</span>
+                        <span class="pname__sub">{{ $order->placed_at?->format('d/m/Y') ?? 'Sin fecha' }}</span>
+                    </span>
+                </div>
+                <div><span class="pcat">Mesa {{ $order->mesa?->numero ?? '—' }}</span></div>
+                <div class="pmuted">{{ $order->participant?->nombre ?? '—' }}</div>
+                <div class="pvalue">{{ $order->items->count() }}</div>
+                <div>
+                    <span class="rounded-full px-2.5 py-1 text-xs font-medium {{ $colorMap[$order->estado->color()] ?? '' }}">
+                        {{ $order->estado->label() }}
+                    </span>
+                </div>
+                <div class="pprice metal">{{ $order->subtotal_formatted }}</div>
+                <div class="pvalue pvalue--r">{{ $order->placed_at?->format('H:i') ?? '—' }}</div>
+            </div>
+        @empty
+            <div class="pempty">No hay pedidos con este filtro.</div>
+        @endforelse
+    </div>
+
+    <div class="pfoot piso-in piso-in-2">
+        Mostrando <b>{{ $this->orders->count() }}</b> de <b>{{ $this->totalCount }}</b> pedidos
     </div>
 </div>
