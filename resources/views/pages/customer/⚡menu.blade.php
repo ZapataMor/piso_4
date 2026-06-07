@@ -30,6 +30,9 @@ new #[Layout('layouts.customer')] #[Title('Menú · Piso Cuatro')] class extends
 
     public bool $showCart = false;
 
+    /** @var array<int,int> */
+    public array $openCategories = [];
+
     public function mount(Mesa $mesa): void
     {
         $this->mesa = $mesa;
@@ -75,6 +78,17 @@ new #[Layout('layouts.customer')] #[Title('Menú · Piso Cuatro')] class extends
         $this->modalProductId = $productId;
         $this->modalQty = 1;
         $this->modalNotes = '';
+    }
+
+    public function toggleCategory(int $categoryId): void
+    {
+        if (in_array($categoryId, $this->openCategories, true)) {
+            $this->openCategories = array_values(array_diff($this->openCategories, [$categoryId]));
+
+            return;
+        }
+
+        $this->openCategories[] = $categoryId;
     }
 
     public function closeModal(): void
@@ -167,21 +181,33 @@ new #[Layout('layouts.customer')] #[Title('Menú · Piso Cuatro')] class extends
     </header>
 
     {{-- Menú --}}
-    <main class="flex-1 space-y-8 px-5 py-6 pb-28">
+    <main class="flex-1 space-y-3 px-5 py-6 pb-28">
         @foreach ($this->categories as $category)
-            <section wire:key="cat-{{ $category->id }}">
-                <p class="kicker mb-2.5 block">{{ $category->kicker }}</p>
-                <h2 class="serif text-3xl font-medium text-[var(--piso-fg)]">{{ $category->name }}</h2>
-                @if ($category->subtitle)
-                    <p class="mt-1 text-sm text-muted">{{ $category->subtitle }}</p>
-                @endif
+            @php($isOpen = in_array($category->id, $openCategories, true))
+
+            <section wire:key="cat-{{ $category->id }}" class="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/45">
+                <button type="button" wire:click="toggleCategory({{ $category->id }})"
+                    class="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-zinc-900/55 active:scale-[0.99]"
+                    aria-expanded="{{ $isOpen ? 'true' : 'false' }}">
+                    <span class="serif block text-2xl font-medium text-[var(--piso-fg)]">{{ $category->name }}</span>
+                    <span class="flex size-9 shrink-0 items-center justify-center rounded-full border border-zinc-700 text-xl leading-none text-[var(--piso-gold)]">
+                        {{ $isOpen ? '−' : '+' }}
+                    </span>
+                </button>
+
+                @if ($isOpen)
+                    <div
+                        class="origin-top border-t border-zinc-800 px-4 pb-2"
+                        wire:transition.in.opacity.scale.origin.top.duration.300ms
+                        wire:transition.out.opacity.scale.origin.top.duration.220ms
+                    >
 
                 @foreach ($category->availableProducts->groupBy('group_label') as $groupLabel => $items)
                     @if ($groupLabel)
-                        <h3 class="mt-6 text-sm font-semibold uppercase tracking-wide text-zinc-300">{{ $groupLabel }}</h3>
+                        <h3 class="mt-5 text-sm font-semibold uppercase tracking-wide text-zinc-300">{{ $groupLabel }}</h3>
                     @endif
 
-                    <div class="mt-3">
+                    <div class="{{ $groupLabel ? 'mt-2' : 'mt-1' }}">
                         @foreach ($items as $product)
                             <button type="button" wire:key="prod-{{ $product->id }}" wire:click="openProduct({{ $product->id }})"
                                 class="group grid w-full grid-cols-[1fr_auto] items-baseline gap-4 border-b border-[var(--piso-line)] py-4 text-left transition active:scale-[0.99]">
@@ -202,6 +228,8 @@ new #[Layout('layouts.customer')] #[Title('Menú · Piso Cuatro')] class extends
                         @endforeach
                     </div>
                 @endforeach
+                    </div>
+                @endif
             </section>
         @endforeach
     </main>

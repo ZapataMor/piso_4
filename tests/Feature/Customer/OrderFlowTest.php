@@ -13,6 +13,7 @@ use App\Services\OrderService;
 use App\Services\SessionService;
 use Database\Seeders\MenuSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -146,8 +147,17 @@ class OrderFlowTest extends TestCase
         $this->withUnencryptedCookie('participant_token', $token)
             ->get(route('mesa.menu', $mesa))
             ->assertOk()
-            ->assertSee('Mojito')
-            ->assertSee('Entradas');
+            ->assertSee('Entradas')
+            ->assertSee('Cócteles')
+            ->assertDontSee('Mojito');
+
+        $cocteles = Category::where('slug', 'cocteles')->firstOrFail();
+
+        Livewire::withCookie('participant_token', $token)
+            ->test('pages::customer.menu', ['mesa' => $mesa])
+            ->assertDontSee('Mojito')
+            ->call('toggleCategory', $cocteles->id)
+            ->assertSee('Mojito');
 
         $participant = SessionParticipant::where('token', $token)->firstOrFail();
         app(CartService::class)->add($participant, Product::first(), 1);

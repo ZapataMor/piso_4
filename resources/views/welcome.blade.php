@@ -60,7 +60,10 @@
         <nav class="head__nav">
             <div class="head__links">
                 <a href="#entradas">Entradas</a>
+                <a href="#compartir">Compartir</a>
+                <a href="#pastas">Pastas</a>
                 <a href="#fuertes">Platos Fuertes</a>
+                <a href="#hamburguesas">Hamburguesas</a>
                 <a href="#postres">Postres</a>
                 <a href="#bebidas">Bebidas</a>
                 <a href="#cocteles">Cócteles</a>

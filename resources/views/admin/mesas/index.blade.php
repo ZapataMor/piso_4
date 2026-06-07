@@ -21,7 +21,7 @@
             </flux:callout>
         @endif
 
-        <div class="ptable piso-in piso-in-2 mt-6" style="--ptpl: 96px minmax(240px, 1fr) 160px 128px 132px;">
+        <div class="ptable piso-in piso-in-2 mt-6" style="--ptpl: 96px minmax(240px, 1fr) 160px 128px 168px;">
             <div class="ptable__head">
                 <div class="pth">Mesa</div>
                 <div class="pth">Nombre</div>
@@ -48,6 +48,9 @@
                         <a href="{{ route('admin.mesas.qr', $mesa) }}" class="pact pact--qr" title="Descargar QR">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
                         </a>
+                        <button type="button" class="pact pact--qr" title="Copiar link del QR" data-copy-qr-url="{{ $mesa->public_url }}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        </button>
                         <form method="POST" action="{{ route('admin.mesas.destroy', $mesa) }}" onsubmit="return confirm('¿Eliminar la mesa #{{ $mesa->numero }}?')">
                             @csrf
                             @method('DELETE')
@@ -67,4 +70,43 @@
             Mostrando <b>{{ $mesas->count() }}</b> mesas · <b>{{ $availableMesas }}</b> disponibles
         </div>
     </div>
+
+    <script>
+        if (!window.pisoQrCopyHandlerReady) {
+            window.pisoQrCopyHandlerReady = true;
+
+            document.addEventListener('click', async (event) => {
+                const button = event.target.closest('[data-copy-qr-url]');
+
+                if (!button) {
+                    return;
+                }
+
+                const url = button.dataset.copyQrUrl;
+                const originalTitle = button.getAttribute('title') || 'Copiar link del QR';
+
+                try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(url);
+                    } else {
+                        const input = document.createElement('textarea');
+                        input.value = url;
+                        input.setAttribute('readonly', '');
+                        input.style.position = 'fixed';
+                        input.style.opacity = '0';
+                        document.body.appendChild(input);
+                        input.select();
+                        document.execCommand('copy');
+                        input.remove();
+                    }
+
+                    button.setAttribute('title', 'Link copiado');
+                    window.setTimeout(() => button.setAttribute('title', originalTitle), 1800);
+                } catch (error) {
+                    button.setAttribute('title', 'No se pudo copiar');
+                    window.setTimeout(() => button.setAttribute('title', originalTitle), 1800);
+                }
+            });
+        }
+    </script>
 </x-layouts::app>

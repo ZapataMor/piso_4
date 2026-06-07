@@ -23,7 +23,7 @@
 }
 
 *{ box-sizing:border-box; margin:0; padding:0; }
-html{ scroll-behavior:smooth; }
+html{ scroll-behavior:smooth; overflow-x:hidden; }
 body{
   background:var(--black);
   color:var(--fg);
@@ -32,6 +32,8 @@ body{
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
   overflow-x:hidden;
+  width:100%;
+  max-width:100%;
 }
 ::selection{ background:var(--gold-soft); color:#fff; }
 
@@ -103,15 +105,16 @@ body{
 .head__logo{ display:flex; align-items:center; gap:13px; opacity:0; transform:translateY(-6px); transition:opacity .6s var(--ease), transform .6s var(--ease); pointer-events:none; }
 .head.scrolled .head__logo{ opacity:1; transform:none; pointer-events:auto; }
 .head__logo img{ height:50px; width:auto; display:block; }
-.head__nav{ display:flex; align-items:center; gap:30px; }
-.head__links{ display:flex; gap:26px; }
+.head__nav{ display:flex; align-items:center; gap:24px; }
+.head__links{ display:flex; gap:18px; }
 .head__links a{
-  color:var(--muted); text-decoration:none; font-size:12.5px;
-  letter-spacing:.2em; text-transform:uppercase; font-weight:500;
+  color:var(--muted); text-decoration:none; font-size:11.5px;
+  letter-spacing:.16em; text-transform:uppercase; font-weight:500;
+  white-space:nowrap;
   transition:color .3s var(--ease);
 }
 .head__links a:hover{ color:var(--fg); }
-@media (max-width:880px){ .head__links{ display:none; } }
+@media (max-width:1040px){ .head__links{ display:none; } }
 
 /* botón reservar */
 .btn-reserve{
@@ -213,6 +216,7 @@ body:not(.ready) .hero__scroll{ opacity:0; }
   position:sticky; top:0; height:100svh;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   text-align:center; padding:0 24px;
+  overflow-x:clip;   /* el título escalado nunca desborda el ancho del viewport */
   /* el velo negro: tapa el contenido y se desvanece al final del intro */
 }
 
@@ -227,7 +231,7 @@ body:not(.ready) .hero__scroll{ opacity:0; }
 .chapter__title{
   font-size:clamp(52px,12vw,168px); font-weight:500; line-height:.9;
   letter-spacing:-.01em; text-transform:uppercase;
-  text-wrap:balance;
+  text-wrap:balance; max-width:100%; overflow-wrap:break-word;
 }
 .chapter__sub{
   margin-top:26px; font-size:clamp(14px,1.7vw,20px);
@@ -327,7 +331,12 @@ body:not(.ready) .hero__scroll{ opacity:0; }
   .chapter__content{ grid-template-columns:1fr; gap:30px; }
   .chapter__figure{ position:relative; top:0; }
   .chapter__photo{ aspect-ratio:16/11; }
-  .chapter__intro{ height:125vh; }
+  /* intro más alto en móvil → la ventana de visibilidad del título es amplia y
+     no se "salta" ningún capítulo al hacer scroll */
+  .chapter__intro{ height:175vh; }
+  /* título más compacto y escalado acotado: nunca desborda el ancho del móvil */
+  .chapter__title{ font-size:clamp(44px,14vw,84px); }
+  .chapter__pin .inner{ transform:scale(min(var(--ttl-scale,.82), 1.18)); }
 }
 
 /* ============================================================ FOOTER ============================================================ */

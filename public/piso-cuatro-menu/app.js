@@ -146,10 +146,11 @@
       const span = o.intro.offsetHeight - vh;
       const p = span>0 ? clamp(-r.top/span, 0, 1) : (r.top<=0?1:0);
 
-      // zoom cinematográfico del título — zonas muertas reducidas, velo equilibrado
-      const op    = seg(p,0,.08) * (1 - seg(p,.78,.92));
-      const scale = lerp(.82, 1.0, seg(p,0,.10)) + seg(p,.10,.88)*0.7;
-      const blur  = lerp(6,0,seg(p,0,.10)) + seg(p,.72,.88)*11;
+      // zoom cinematográfico del título — meseta amplia para que cada título
+      // se vea bien aunque se haga scroll rápido (sobre todo en móvil)
+      const op    = seg(p,0,.07) * (1 - seg(p,.86,.98));
+      const scale = lerp(.82, 1.0, seg(p,0,.10)) + seg(p,.10,.92)*0.7;
+      const blur  = lerp(6,0,seg(p,0,.10)) + seg(p,.82,.96)*11;
       o.inner.style.setProperty("--ttl-op", op.toFixed(3));
       o.inner.style.setProperty("--ttl-scale", scale.toFixed(3));
       o.inner.style.setProperty("--ttl-blur", blur.toFixed(2)+"px");
