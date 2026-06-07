@@ -4,12 +4,22 @@ use App\Concerns\AdminOnly;
 use App\Helpers\Money;
 use App\Services\StatsService;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Panel de Administración · Piso 4')] class extends Component
 {
     use AdminOnly;
+
+    /** Reverb: refresca las métricas al abrir/cerrar mesas o moverse los pedidos. */
+    #[On('echo-private:waiters,.session.changed')]
+    #[On('echo-private:waiters,.order.placed')]
+    #[On('echo-private:waiters,.order.item.status')]
+    public function onRealtime(): void
+    {
+        unset($this->snap);
+    }
 
     #[Computed]
     public function snap(): array

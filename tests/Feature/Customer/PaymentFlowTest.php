@@ -75,6 +75,30 @@ class PaymentFlowTest extends TestCase
         $this->assertSame(BillStatus::EnPago, $bill->fresh()->estado);
     }
 
+    public function test_generating_payments_uses_orders_added_after_bill_request(): void
+    {
+        $mesa = Mesa::create(['numero' => 11, 'qr_token' => 'tok-11', 'estado' => 'disponible']);
+        $session = app(SessionService::class)->openOrGetActiveSession($mesa);
+        $felipe = app(SessionService::class)->addParticipant($session, 'Felipe');
+        $maria = app(SessionService::class)->addParticipant($session, 'Maria');
+
+        $cat = Category::create(['slug' => 'late', 'name' => 'Late', 'display_order' => 1]);
+        $papa = Product::create(['category_id' => $cat->id, 'name' => 'Papa con queso', 'price' => 12000, 'tipo_preparacion' => 'cocina', 'is_available' => true]);
+        $arroz = Product::create(['category_id' => $cat->id, 'name' => 'Arroz con huevo', 'price' => 9000, 'tipo_preparacion' => 'cocina', 'is_available' => true]);
+
+        app(CartService::class)->add($felipe, $papa, 1);
+        app(OrderService::class)->submitOrder($felipe);
+        $bill = app(BillService::class)->requestBill($session);
+
+        app(CartService::class)->add($maria, $arroz, 1);
+        app(OrderService::class)->submitOrder($maria);
+
+        $payments = app(PaymentService::class)->generate($bill, BillModality::Unica);
+
+        $this->assertEquals(21000.0, (float) $bill->fresh()->total);
+        $this->assertEquals(21000.0, (float) $payments->first()->monto);
+    }
+
     public function test_automatica_splits_by_participant(): void
     {
         [$session, $juan, $maria] = $this->scenario();
@@ -160,6 +184,33 @@ class PaymentFlowTest extends TestCase
             ->assertSee('Solicitar cuenta');
     }
 
+    public function test_customer_bill_page_lists_global_orders_by_participant(): void
+    {
+        $mesa = Mesa::create(['numero' => 10, 'qr_token' => 'tok-10', 'estado' => 'disponible']);
+        $session = app(SessionService::class)->openOrGetActiveSession($mesa);
+        $felipe = app(SessionService::class)->addParticipant($session, 'Felipe');
+        $maria = app(SessionService::class)->addParticipant($session, 'Maria');
+
+        $cat = Category::create(['slug' => 'global', 'name' => 'Global', 'display_order' => 1]);
+        $papa = Product::create(['category_id' => $cat->id, 'name' => 'Papa con queso', 'price' => 12000, 'tipo_preparacion' => 'cocina', 'is_available' => true]);
+        $arroz = Product::create(['category_id' => $cat->id, 'name' => 'Arroz con huevo', 'price' => 9000, 'tipo_preparacion' => 'cocina', 'is_available' => true]);
+
+        app(CartService::class)->add($felipe, $papa, 1);
+        app(OrderService::class)->submitOrder($felipe);
+        app(CartService::class)->add($maria, $arroz, 1);
+        app(OrderService::class)->submitOrder($maria);
+
+        $this->withUnencryptedCookie('participant_token', $felipe->token)
+            ->get(route('mesa.bill', $mesa))
+            ->assertOk()
+            ->assertSee('Cuenta global')
+            ->assertSee('Felipe')
+            ->assertSee('Papa con queso')
+            ->assertSee('Maria')
+            ->assertSee('Arroz con huevo')
+            ->assertSee('Subtotal');
+    }
+
     public function test_waiter_sees_bills_to_collect(): void
     {
         $this->seed(RolesAndPermissionsSeeder::class);
@@ -172,7 +223,7 @@ class PaymentFlowTest extends TestCase
         $this->actingAs($mesero)
             ->get(route('waiter.dashboard'))
             ->assertOk()
-            ->assertSee('Cuentas por cobrar')
+            ->assertSee('Cuentas pendientes')
             ->assertSee('Confirmar');
     }
 }

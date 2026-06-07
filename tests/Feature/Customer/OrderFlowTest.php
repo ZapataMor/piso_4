@@ -72,8 +72,8 @@ class OrderFlowTest extends TestCase
         $orders = app(OrderService::class);
         $p = $this->participant();
 
-        $cart->add($p, $this->product('cocina', 20000), 2); // 40000
-        $cart->add($p, $this->product('bar', 5000), 1);     // 5000
+        $cart->add($p, $this->product('cocina', 20000), 2);
+        $cart->add($p, $this->product('bar', 5000), 1);
 
         $order = $orders->submitOrder($p);
 
@@ -84,7 +84,6 @@ class OrderFlowTest extends TestCase
         $this->assertEquals(45000.0, (float) $order->fresh()->subtotal);
         $this->assertCount(0, $p->cartItems()->get(), 'cart should be empty after submit');
 
-        // snapshots
         $item = $order->items->firstWhere('tipo_preparacion', PreparationType::Cocina);
         $this->assertNotNull($item->product_name);
         $this->assertEquals(20000.0, (float) $item->unit_price);
@@ -150,7 +149,6 @@ class OrderFlowTest extends TestCase
             ->assertSee('Mojito')
             ->assertSee('Entradas');
 
-        // submit an order for this participant, then check the status page
         $participant = SessionParticipant::where('token', $token)->firstOrFail();
         app(CartService::class)->add($participant, Product::first(), 1);
         app(OrderService::class)->submitOrder($participant);
@@ -159,5 +157,35 @@ class OrderFlowTest extends TestCase
             ->get(route('mesa.orders', $mesa))
             ->assertOk()
             ->assertSee('Pedido #1');
+    }
+
+    public function test_orders_page_groups_table_orders_by_customer_with_subtotals_and_table_total(): void
+    {
+        $mesa = Mesa::create(['numero' => 3, 'qr_token' => 'tok-3', 'estado' => 'disponible']);
+        $session = app(SessionService::class)->openOrGetActiveSession($mesa);
+        $felipe = app(SessionService::class)->addParticipant($session, 'Felipe');
+        $maria = app(SessionService::class)->addParticipant($session, 'Maria');
+
+        app(CartService::class)->add($felipe, $this->product('cocina', 12000), 1);
+        app(OrderService::class)->submitOrder($felipe);
+        app(CartService::class)->add($maria, $this->product('cocina', 9000), 1);
+        app(OrderService::class)->submitOrder($maria);
+        app(CartService::class)->add($felipe, $this->product('bar', 8000), 1);
+        app(OrderService::class)->submitOrder($felipe);
+
+        $this->withUnencryptedCookie('participant_token', $felipe->token)
+            ->get(route('mesa.orders', $mesa))
+            ->assertOk()
+            ->assertSee('Pedidos de la mesa')
+            ->assertSee('Felipe')
+            ->assertSee('2 pedidos')
+            ->assertSee('Subtotal de Felipe')
+            ->assertSee('$20.000')
+            ->assertSee('Maria')
+            ->assertSee('1 pedido')
+            ->assertSee('Subtotal de Maria')
+            ->assertSee('$9.000')
+            ->assertSee('Total de la mesa')
+            ->assertSee('$29.000');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\SessionStatus;
 use App\Enums\TableStatus;
+use App\Events\SessionStatusChanged;
 use App\Models\Mesa;
 use App\Models\RestaurantSession;
 use App\Models\SessionParticipant;
@@ -21,7 +22,7 @@ class SessionService
 {
     public function openOrGetActiveSession(Mesa $mesa): RestaurantSession
     {
-        return DB::transaction(function () use ($mesa) {
+        [$session, $created] = DB::transaction(function () use ($mesa) {
             // Bloquea la mesa para serializar escaneos concurrentes.
             $mesa = Mesa::whereKey($mesa->getKey())->lockForUpdate()->firstOrFail();
 
@@ -32,7 +33,7 @@ class SessionService
                 ->first();
 
             if ($active) {
-                return $active;
+                return [$active, false];
             }
 
             $session = RestaurantSession::create([
@@ -49,8 +50,15 @@ class SessionService
                 $mesa->update(['estado' => TableStatus::Ocupada]);
             }
 
-            return $session;
+            return [$session, true];
         });
+
+        // Solo notifica cuando realmente se abrió una mesa nueva (sube el conteo).
+        if ($created) {
+            SessionStatusChanged::dispatch($session);
+        }
+
+        return $session;
     }
 
     public function addParticipant(RestaurantSession $session, string $nombre): SessionParticipant
@@ -73,6 +81,8 @@ class SessionService
 
             $session->mesa->update(['estado' => TableStatus::Disponible]);
         });
+
+        SessionStatusChanged::dispatch($session);
     }
 
     private function generateParticipantToken(): string

@@ -37,11 +37,12 @@ class PaymentService
             ->where('order_items.estado', '!=', OrderItemStatus::Cancelado->value)
             ->with('order')
             ->get();
+        $total = (float) $items->sum(fn (OrderItem $i) => $i->lineTotalRaw());
 
         return match ($modalidad) {
             BillModality::Unica => collect([[
                 'participant' => $bill->requestedBy,
-                'amount' => (float) $bill->total,
+                'amount' => $total,
                 'order_item_ids' => [],
             ]]),
 
@@ -78,7 +79,11 @@ class PaymentService
                 ->get()
                 ->each(fn (Payment $p) => $p->delete());
 
-            $bill->update(['modalidad' => $modalidad, 'estado' => BillStatus::EnPago]);
+            $bill->update([
+                'modalidad' => $modalidad,
+                'estado' => BillStatus::EnPago,
+                'total' => $this->currentTotal($bill),
+            ]);
 
             $payments = collect();
 
@@ -103,6 +108,13 @@ class PaymentService
 
             return $payments;
         });
+    }
+
+    private function currentTotal(Bill $bill): float
+    {
+        return (float) $bill->session->orderItems()
+            ->where('order_items.estado', '!=', OrderItemStatus::Cancelado->value)
+            ->sum(DB::raw('unit_price * quantity'));
     }
 
     public function setMethod(Payment $payment, PaymentMethod $metodo, ?string $payerNombre = null, ?string $payerTelefono = null): void

@@ -77,6 +77,29 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
     }
 
     #[Computed]
+    public function accountGroups(): Collection
+    {
+        return $this->items
+            ->groupBy(fn ($item) => $item->order->session_participant_id)
+            ->map(function (Collection $items) {
+                $participant = $items->first()?->order?->participant;
+
+                return [
+                    'participant' => $participant,
+                    'items' => $items,
+                    'subtotal' => (float) $items->sum(fn ($item) => $item->lineTotalRaw()),
+                ];
+            })
+            ->values();
+    }
+
+    #[Computed]
+    public function accountTotal(): float
+    {
+        return (float) $this->items->sum(fn ($item) => $item->lineTotalRaw());
+    }
+
+    #[Computed]
     public function previewShares(): Collection
     {
         return $this->bill
@@ -198,12 +221,57 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
     </header>
 
     <main class="flex-1 space-y-5 px-5 py-6">
+        @if ($this->accountGroups->isNotEmpty())
+            <section class="card-base space-y-4">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-semibold text-zinc-100">Cuenta global</p>
+                        <p class="text-xs text-muted">Pedidos de todas las personas en la mesa</p>
+                    </div>
+                    <span class="shrink-0 text-lg font-bold text-amber-400">
+                        {{ $this->money($this->accountTotal) }}
+                    </span>
+                </div>
+
+                <div class="space-y-4">
+                    @foreach ($this->accountGroups as $group)
+                        <div wire:key="account-group-{{ $group['participant']?->id ?? 'guest' }}" class="space-y-2 border-t border-zinc-800 pt-4 first:border-t-0 first:pt-0">
+                            <div class="flex items-center justify-between gap-3">
+                                <h2 class="font-semibold text-zinc-100">{{ $group['participant']?->nombre ?? 'Cliente' }}</h2>
+                                <span class="text-sm font-semibold text-amber-400">{{ $this->money($group['subtotal']) }}</span>
+                            </div>
+
+                            <ul class="space-y-2">
+                                @foreach ($group['items'] as $item)
+                                    <li wire:key="account-item-{{ $item->id }}" class="flex items-start justify-between gap-3 text-sm">
+                                        <span class="min-w-0 flex-1">
+                                            <span class="text-muted-sm">{{ $item->quantity }}x</span>
+                                            <span class="text-zinc-300">{{ $item->product_name }}</span>
+                                            @if ($item->notes)
+                                                <span class="mt-0.5 block text-xs text-muted-sm">{{ $item->notes }}</span>
+                                            @endif
+                                        </span>
+                                        <span class="shrink-0 font-medium tabular-nums text-zinc-200">{{ $item->line_total }}</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endforeach
+                </div>
+
+                <div class="flex items-center justify-between border-t border-zinc-800 pt-3">
+                    <span class="text-sm font-semibold text-muted">Subtotal</span>
+                    <span class="text-xl font-bold text-zinc-100">{{ $this->money($this->accountTotal) }}</span>
+                </div>
+            </section>
+        @endif
+
         @if ($this->step() === 'request')
             {{-- Paso 1: solicitar cuenta --}}
             <div class="card-base text-center space-y-4">
                 <div>
                     <p class="text-muted text-sm">Total estimado de la mesa</p>
-                    <p class="mt-2 text-4xl font-bold text-amber-400">{{ $this->money($this->items->sum(fn ($i) => $i->lineTotalRaw())) }}</p>
+                    <p class="mt-2 text-4xl font-bold text-amber-400">{{ $this->money($this->accountTotal) }}</p>
                 </div>
                 <button type="button" wire:click="requestBill" class="btn-primary w-full text-lg py-3.5">
                     🔔 Solicitar cuenta
@@ -215,7 +283,7 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
             <div class="card-base">
                 <div class="flex items-center justify-between">
                     <span class="text-muted">Total</span>
-                    <span class="text-2xl font-bold text-amber-400">{{ $this->money($this->bill->total) }}</span>
+                    <span class="text-2xl font-bold text-amber-400">{{ $this->money($this->accountTotal) }}</span>
                 </div>
             </div>
 
@@ -273,7 +341,7 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
             <div class="card-base">
                 <div class="flex items-center justify-between">
                     <span class="text-muted text-sm">Total · {{ $this->bill->modalidad->label() }}</span>
-                    <span class="text-2xl font-bold text-amber-400">{{ $this->money($this->bill->total) }}</span>
+                    <span class="text-2xl font-bold text-amber-400">{{ $this->money($this->accountTotal) }}</span>
                 </div>
             </div>
 

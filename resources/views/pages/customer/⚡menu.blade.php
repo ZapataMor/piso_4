@@ -80,6 +80,9 @@ new #[Layout('layouts.customer')] #[Title('Menú · Piso Cuatro')] class extends
     public function closeModal(): void
     {
         $this->modalProductId = null;
+        $this->modalQty = 1;
+        $this->modalNotes = '';
+        unset($this->modalProduct);
     }
 
     public function incModalQty(): void

@@ -3,10 +3,14 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Category;
+use App\Models\Mesa;
 use App\Models\Product;
 use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\CartService;
+use App\Services\OrderService;
+use App\Services\SessionService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\SettingsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -104,5 +108,38 @@ class AdminPanelTest extends TestCase
         Livewire::test('pages::admin.products')->call('toggleAvailable', $product->id);
 
         $this->assertFalse($product->fresh()->is_available);
+    }
+
+    public function test_admin_orders_page_groups_orders_by_table(): void
+    {
+        $this->actingAs($this->userWithRole('admin'));
+
+        $category = Category::create(['slug' => 'ordenes', 'name' => 'Ordenes', 'display_order' => 1]);
+        $sushi = Product::create(['category_id' => $category->id, 'name' => 'Sushi', 'price' => 44000, 'tipo_preparacion' => 'cocina', 'is_available' => true]);
+        $brochetas = Product::create(['category_id' => $category->id, 'name' => 'Brochetas de Salmón', 'price' => 38500, 'tipo_preparacion' => 'cocina', 'is_available' => true]);
+        $parrilla = Product::create(['category_id' => $category->id, 'name' => 'Parrilla Piso 4', 'price' => 59500, 'tipo_preparacion' => 'cocina', 'is_available' => true]);
+
+        $mesa3 = Mesa::create(['numero' => 3, 'qr_token' => 'tok-3', 'estado' => 'disponible']);
+        $session3 = app(SessionService::class)->openOrGetActiveSession($mesa3);
+        $felipe = app(SessionService::class)->addParticipant($session3, 'Felipe Mor');
+        $carmen = app(SessionService::class)->addParticipant($session3, 'Carmen');
+
+        app(CartService::class)->add($felipe, $sushi, 1);
+        app(OrderService::class)->submitOrder($felipe);
+        app(CartService::class)->add($felipe, $brochetas, 1);
+        app(OrderService::class)->submitOrder($felipe);
+        app(CartService::class)->add($carmen, $parrilla, 1);
+        app(OrderService::class)->submitOrder($carmen);
+
+        $this->get(route('admin.orders'))
+            ->assertOk()
+            ->assertSee('Mesa 3')
+            ->assertSee('3 pedidos')
+            ->assertSee('Clientes: Felipe Mor, Carmen')
+            ->assertSee('Total mesa')
+            ->assertSee('$142.000')
+            ->assertSee('Pedido #1')
+            ->assertSee('Pedido #2')
+            ->assertSee('Pedido #3');
     }
 }
