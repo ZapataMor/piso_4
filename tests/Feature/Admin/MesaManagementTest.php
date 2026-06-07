@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class MesaManagementTest extends TestCase
@@ -114,5 +115,19 @@ class MesaManagementTest extends TestCase
         $this->delete(route('admin.mesas.destroy', $mesa))->assertRedirect(route('admin.mesas.index'));
 
         $this->assertSoftDeleted('mesas', ['id' => $mesa->id]);
+    }
+
+    public function test_index_refreshes_table_status_on_session_event(): void
+    {
+        $this->actingAs($this->userWithRole('admin'));
+        $mesa = Mesa::create(['numero' => 11, 'qr_token' => 'tok-11', 'estado' => 'disponible']);
+
+        $component = Livewire::test('pages::admin.mesas')->assertSee('Disponible');
+
+        // Simula la apertura de sesión (escaneo de QR): la mesa pasa a ocupada
+        // y el broadcast `session.changed` llega al componente del admin.
+        $mesa->update(['estado' => 'ocupada']);
+        $component->dispatch('echo-private:waiters,.session.changed')
+            ->assertSee('Ocupada');
     }
 }

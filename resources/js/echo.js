@@ -21,6 +21,10 @@ if (reverbEnabled && reverbKey && reverbHost) {
         forceTLS,
         enabledTransports: forceTLS ? ['wss'] : ['ws'],
     });
-} else {
-    window.Echo = null;
 }
+// Si Reverb está deshabilitado dejamos window.Echo como `undefined`
+// (no `null`): Livewire solo omite los listeners `echo-*` cuando
+// `typeof window.Echo === "undefined"`. Asignar `null` pasaba ese guard y
+// reventaba en `null.private(...)`, abortando la init del componente y
+// dejando los wire:click sin responder. Los guards `window.Echo && …` de
+// Alpine siguen funcionando igual con `undefined`.

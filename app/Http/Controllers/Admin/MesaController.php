@@ -20,13 +20,6 @@ class MesaController extends Controller
         private readonly QrService $qr,
     ) {}
 
-    public function index(): View
-    {
-        $mesas = Mesa::orderBy('numero')->get();
-
-        return view('admin.mesas.index', compact('mesas'));
-    }
-
     public function create(): View
     {
         return view('admin.mesas.create', ['estados' => TableStatus::cases()]);

@@ -114,7 +114,8 @@ new #[Title('Meseros · Piso 4')] class extends Component
         $this->forget();
     }
 
-    /** Reverb: refresca al llegar pedidos, llamados, cuentas o pagos. */
+    /** Reverb: refresca al abrir/cerrar mesas, o al llegar pedidos, llamados, cuentas o pagos. */
+    #[On('echo-private:waiters,.session.changed')]
     #[On('echo-private:waiters,.order.placed')]
     #[On('echo-private:waiters,.order.item.status')]
     #[On('echo-private:waiters,.waiter.called')]
@@ -194,7 +195,7 @@ new #[Title('Meseros · Piso 4')] class extends Component
                                             </button>
                                         @endif
                                     </div>
-                                </li>
+                                </div>
                             @empty
                                 <p class="text-xs text-zinc-500 italic">Esperando que el cliente genere los pagos…</p>
                             @endforelse
