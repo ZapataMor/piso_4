@@ -83,7 +83,7 @@ new #[Layout('layouts.customer')] #[Title('Menú · Piso Cuatro')] class extends
     public function toggleCategory(int $categoryId): void
     {
         if (in_array($categoryId, $this->openCategories, true)) {
-            $this->openCategories = array_values(array_diff($this->openCategories, [$categoryId]));
+            $this->openCategories = $this->withoutCategory($this->openCategories, $categoryId);
 
             return;
         }
@@ -161,6 +161,18 @@ new #[Layout('layouts.customer')] #[Title('Menú · Piso Cuatro')] class extends
     {
         unset($this->cartItems, $this->cartCount, $this->cartTotal);
     }
+
+    /**
+     * @param  array<int,int>  $categories
+     * @return array<int,int>
+     */
+    private function withoutCategory(array $categories, int $categoryId): array
+    {
+        return array_values(array_filter(
+            $categories,
+            fn (int $id): bool => $id !== $categoryId
+        ));
+    }
 }; ?>
 
 <div class="relative flex min-h-svh flex-col">
@@ -185,8 +197,47 @@ new #[Layout('layouts.customer')] #[Title('Menú · Piso Cuatro')] class extends
         @foreach ($this->categories as $category)
             @php($isOpen = in_array($category->id, $openCategories, true))
 
-            <section wire:key="cat-{{ $category->id }}" class="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/45">
-                <button type="button" wire:click="toggleCategory({{ $category->id }})"
+            <section
+                wire:key="cat-{{ $category->id }}"
+                class="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/45"
+                x-data="{
+                    shown: false,
+                    height: '0px',
+                    closing: false,
+                    syncHeight() {
+                        this.height = `${this.$refs.body?.scrollHeight || 0}px`
+                    },
+                    reveal() {
+                        this.$nextTick(() => {
+                            this.syncHeight()
+
+                            requestAnimationFrame(() => {
+                                this.shown = true
+                            })
+                        })
+                    },
+                    close() {
+                        if (this.closing) {
+                            return
+                        }
+
+                        this.syncHeight()
+                        this.shown = true
+                        this.closing = true
+
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                this.shown = false
+
+                                setTimeout(() => {
+                                    $wire.toggleCategory({{ $category->id }})
+                                }, 720)
+                            })
+                        })
+                    },
+                }"
+            >
+                <button type="button" x-on:click="{{ $isOpen ? 'close()' : '$wire.toggleCategory('.$category->id.')' }}"
                     class="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-zinc-900/55 active:scale-[0.99]"
                     aria-expanded="{{ $isOpen ? 'true' : 'false' }}">
                     <span class="serif block text-2xl font-medium text-[var(--piso-fg)]">{{ $category->name }}</span>
@@ -197,10 +248,12 @@ new #[Layout('layouts.customer')] #[Title('Menú · Piso Cuatro')] class extends
 
                 @if ($isOpen)
                     <div
-                        class="origin-top border-t border-zinc-800 px-4 pb-2"
-                        wire:transition.in.opacity.scale.origin.top.duration.300ms
-                        wire:transition.out.opacity.scale.origin.top.duration.220ms
+                        class="qr-menu-panel"
+                        x-init="reveal()"
+                        x-bind:class="{ 'is-expanded': shown }"
+                        x-bind:style="{ maxHeight: shown ? height : '0px' }"
                     >
+                        <div x-ref="body" class="qr-menu-panel__body">
 
                 @foreach ($category->availableProducts->groupBy('group_label') as $groupLabel => $items)
                     @if ($groupLabel)
@@ -228,6 +281,7 @@ new #[Layout('layouts.customer')] #[Title('Menú · Piso Cuatro')] class extends
                         @endforeach
                     </div>
                 @endforeach
+                        </div>
                     </div>
                 @endif
             </section>

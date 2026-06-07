@@ -223,6 +223,30 @@ select:focus[data-flux-control] {
         border-color: var(--piso-silver-3);
     }
 
+    .qr-menu-panel {
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transform: translateY(-10px);
+        border-top: 1px solid transparent;
+        transition:
+            max-height 680ms var(--piso-ease-out),
+            opacity 360ms ease,
+            transform 520ms var(--piso-ease-out),
+            border-color 320ms ease;
+        will-change: max-height, opacity, transform;
+    }
+
+    .qr-menu-panel.is-expanded {
+        opacity: 1;
+        transform: translateY(0);
+        border-top-color: var(--color-zinc-800);
+    }
+
+    .qr-menu-panel__body {
+        padding: 0 1rem .5rem;
+    }
+
     .btn-ghost {
         display: inline-flex;
         align-items: center;
