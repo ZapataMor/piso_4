@@ -116,6 +116,7 @@
     inner: ch.querySelector(".chapter__pin .inner"),
     img:   ch.querySelector(".chapter__photo img"),
     fig:   ch.querySelector(".chapter__figure"),
+    content: ch.querySelector(".chapter__content"),
     bgType: ch.dataset.bg
   }));
 
@@ -129,6 +130,7 @@
 
   const veilEl = document.getElementById("veil");
   const smooth = t => t*t*(3-2*t); // suavizado
+  const prefersReduce = matchMedia("(prefers-reduced-motion:reduce)");
 
   let ticking=false;
   function frame(){
@@ -146,20 +148,34 @@
       const span = o.intro.offsetHeight - vh;
       const p = span>0 ? clamp(-r.top/span, 0, 1) : (r.top<=0?1:0);
 
+      // entrada anticipada: mientras el intro se acerca (r.top>0) el título ya
+      // aparece y se mantiene CENTRADO, para arrancar justo en medio del hueco
+      // entre el contenido de la categoría anterior y la imagen de la siguiente
+      const enterWin = vh*0.6;
+      const appear = clamp((enterWin - r.top)/enterWin, 0, 1);
+      const shift  = r.top>0 ? -Math.min(r.top, enterWin) : 0;
+
       // zoom cinematográfico del título — meseta amplia para que cada título
       // se vea bien aunque se haga scroll rápido (sobre todo en móvil)
-      const op    = seg(p,0,.07) * (1 - seg(p,.66,.99));
-      const scale = lerp(.82, 1.0, seg(p,0,.10)) + seg(p,.10,.92)*0.7;
-      const blur  = lerp(6,0,seg(p,0,.10)) + seg(p,.66,.97)*11;
+      const op    = appear * (1 - seg(p,.66,.99));
+      const scale = lerp(.82, 1.0, appear) + seg(p,.10,.92)*0.7;
+      const blur  = lerp(6,0,appear) + seg(p,.66,.97)*11;
       o.inner.style.setProperty("--ttl-op", op.toFixed(3));
-      o.inner.style.setProperty("--ttl-scale", scale.toFixed(3));
       o.inner.style.setProperty("--ttl-blur", blur.toFixed(2)+"px");
+      // el transform se compone inline (translateY+scale juntos) salvo en
+      // movimiento reducido, donde la CSS impone transform:none
+      if (!prefersReduce.matches)
+        o.inner.style.transform = `translateY(${shift.toFixed(1)}px) scale(${scale.toFixed(3)})`;
 
-      // contribución al oscurecimiento: ventana más estrecha para no solapar entre capítulos
-      const darkIn  = smooth(seg(p,0,.14));
+      // oscurecimiento sincronizado con la aparición del título
+      const darkIn  = appear;
       const darkOut = 1 - smooth(seg(p,.68,.88));
       const b = Math.min(darkIn, darkOut);
       if (b>darkness) darkness = b;
+
+      // oscurece el contenido (imagen + carta) mientras el título se anima;
+      // al terminar la animación, b→0 y el contenido se revela normal
+      if (o.content) o.content.style.setProperty("--dim", b.toFixed(3));
 
       // parallax de la foto
       if (o.img){

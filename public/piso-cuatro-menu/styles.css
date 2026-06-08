@@ -248,6 +248,13 @@ body:not(.ready) .hero__scroll{ opacity:0; }
   display:grid; grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr);
   gap:clamp(34px,5vw,76px); align-items:start;
 }
+/* velo que oscurece el contenido mientras se anima el título (--dim lo controla
+   el scroll en app.js); queda por debajo del título (intro z-index:4) */
+.chapter__content::before{
+  content:""; position:absolute; inset:0; z-index:5;
+  background:var(--black); opacity:var(--dim,0);
+  pointer-events:none;
+}
 .chapter--wide .chapter__content{ grid-template-columns:1fr; max-width:1080px; }
 
 /* foto protagonista */
@@ -376,4 +383,7 @@ body:not(.ready) .hero__scroll{ opacity:0; }
   #veil{ opacity:0 !important; }
   .dish{ opacity:1; transform:none; }
   .chapter__intro{ height:auto; min-height:60vh; }
+  /* sin animación: ni velo de contenido ni solapamiento, todo legible */
+  .chapter__content{ margin-top:0; }
+  .chapter__content::before{ opacity:0 !important; }
 }
