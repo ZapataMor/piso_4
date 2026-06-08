@@ -211,7 +211,7 @@ body:not(.ready) .hero__scroll{ opacity:0; }
 .chapter{ position:relative; z-index:10; }
 
 /* intro fijada que hace zoom */
-.chapter__intro{ position:relative; height:155vh; }
+.chapter__intro{ position:relative; height:113vh; z-index:4; }
 .chapter__pin{
   position:sticky; top:0; height:100svh;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -242,7 +242,9 @@ body:not(.ready) .hero__scroll{ opacity:0; }
 /* contenido del capítulo */
 .chapter__content{
   position:relative; z-index:3;
-  max-width:1240px; margin:0 auto; padding:clamp(20px,3vh,48px) clamp(20px,5vw,56px) clamp(40px,6vh,80px);
+  /* solapa la imagen con la cola del intro: cuando el título se desvanece
+     la imagen ya está a media pantalla, sin dejar el vacío superior */
+  max-width:1240px; margin:-55vh auto 0; padding:clamp(20px,3vh,48px) clamp(20px,5vw,56px) clamp(40px,6vh,80px);
   display:grid; grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr);
   gap:clamp(34px,5vw,76px); align-items:start;
 }
@@ -333,7 +335,7 @@ body:not(.ready) .hero__scroll{ opacity:0; }
   .chapter__photo{ aspect-ratio:16/11; }
   /* intro más alto en móvil → la ventana de visibilidad del título es amplia y
      no se "salta" ningún capítulo al hacer scroll */
-  .chapter__intro{ height:175vh; }
+  .chapter__intro{ height:116vh; }
   /* título más compacto y escalado acotado: nunca desborda el ancho del móvil */
   .chapter__title{ font-size:clamp(44px,14vw,84px); }
   .chapter__pin .inner{ transform:scale(min(var(--ttl-scale,.82), 1.18)); }

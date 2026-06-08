@@ -22,6 +22,8 @@ use Livewire\Component;
 
 new #[Title('Meseros · Piso 4')] class extends Component
 {
+    public ?int $closingSessionId = null;
+
     /** Re-autoriza en cada petición Livewire (mount + updates). */
     public function boot(): void
     {
@@ -71,6 +73,14 @@ new #[Title('Meseros · Piso 4')] class extends Component
             ->values();
     }
 
+    #[Computed]
+    public function closingSession(): ?RestaurantSession
+    {
+        return $this->closingSessionId
+            ? RestaurantSession::where('estado', 'activa')->with(['mesa', 'participants'])->find($this->closingSessionId)
+            : null;
+    }
+
     public function deliver(int $itemId, OrderService $orders): void
     {
         $item = OrderItem::find($itemId);
@@ -89,14 +99,32 @@ new #[Title('Meseros · Piso 4')] class extends Component
         }
     }
 
-    public function closeSession(int $sessionId, SessionService $sessions): void
+    public function requestCloseSession(int $sessionId): void
     {
-        $session = RestaurantSession::find($sessionId);
+        $session = RestaurantSession::where('estado', 'activa')->find($sessionId);
+
+        $this->closingSessionId = $session?->id;
+        unset($this->closingSession);
+    }
+
+    public function cancelCloseSession(): void
+    {
+        $this->closingSessionId = null;
+        unset($this->closingSession);
+    }
+
+    public function closeSelectedSession(SessionService $sessions): void
+    {
+        $session = $this->closingSessionId ? RestaurantSession::find($this->closingSessionId) : null;
+
+        $this->closingSessionId = null;
 
         if ($session && $session->isActive()) {
             $sessions->closeSession($session);
             $this->forget();
         }
+
+        unset($this->closingSession);
     }
 
     public function confirmPayment(int $paymentId, PaymentService $payments): void
@@ -128,7 +156,7 @@ new #[Title('Meseros · Piso 4')] class extends Component
 
     private function forget(): void
     {
-        unset($this->calls, $this->readyItems, $this->activeSessions, $this->bills);
+        unset($this->calls, $this->readyItems, $this->activeSessions, $this->bills, $this->closingSession);
     }
 
     public function money(float $amount): string
@@ -241,7 +269,7 @@ new #[Title('Meseros · Piso 4')] class extends Component
                             <p class="font-semibold text-amber-400">{{ $this->money($session->currentTotal()) }}</p>
                         </div>
                     </div>
-                    <button type="button" wire:click="closeSession({{ $session->id }})" wire:confirm="¿Cerrar la mesa {{ $session->mesa->numero }}?" class="w-full rounded-lg bg-zinc-700 hover:bg-zinc-600 px-3 py-2 text-xs font-semibold text-zinc-200 active:scale-[0.98]">
+                    <button type="button" wire:click="requestCloseSession({{ $session->id }})" class="w-full rounded-lg bg-zinc-700 hover:bg-zinc-600 px-3 py-2 text-xs font-semibold text-zinc-200 active:scale-[0.98]">
                         Cerrar mesa
                     </button>
                 </div>
@@ -252,4 +280,45 @@ new #[Title('Meseros · Piso 4')] class extends Component
             @endforelse
         </x-dashboard.section>
     </div>
+
+    @if ($this->closingSession)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm" wire:key="close-session-modal" wire:click="cancelCloseSession">
+            <div class="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl shadow-black/40" wire:click.stop>
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="header-subtitle mb-2">Confirmar cierre</p>
+                        <h3 class="text-xl font-semibold text-zinc-100">Cerrar mesa {{ $this->closingSession->mesa->numero }}</h3>
+                    </div>
+                    <button type="button" wire:click="cancelCloseSession" class="flex size-9 shrink-0 items-center justify-center rounded-full border border-zinc-700 text-xl leading-none text-zinc-400 transition hover:border-zinc-500 hover:bg-zinc-800 hover:text-zinc-100" aria-label="Cerrar modal">
+                        &times;
+                    </button>
+                </div>
+
+                <div class="mt-5 rounded-xl border border-zinc-800 bg-zinc-950/70 p-4">
+                    <p class="text-sm leading-6 text-zinc-300">
+                        Esta acción cerrará la sesión activa de la mesa y la marcará como disponible.
+                    </p>
+                    <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div class="rounded-lg bg-zinc-900 px-3 py-2">
+                            <span class="block text-xs text-zinc-500">Personas</span>
+                            <span class="font-semibold text-zinc-100">{{ $this->closingSession->participants->count() }}</span>
+                        </div>
+                        <div class="rounded-lg bg-zinc-900 px-3 py-2">
+                            <span class="block text-xs text-zinc-500">Total actual</span>
+                            <span class="font-semibold text-amber-400">{{ $this->money($this->closingSession->currentTotal()) }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 grid grid-cols-2 gap-3">
+                    <button type="button" wire:click="cancelCloseSession" class="btn-secondary">
+                        Cancelar
+                    </button>
+                    <button type="button" wire:click="closeSelectedSession" class="rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-700 active:scale-[0.98]">
+                        Cerrar mesa
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

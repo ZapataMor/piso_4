@@ -148,9 +148,9 @@
 
       // zoom cinematográfico del título — meseta amplia para que cada título
       // se vea bien aunque se haga scroll rápido (sobre todo en móvil)
-      const op    = seg(p,0,.07) * (1 - seg(p,.86,.98));
+      const op    = seg(p,0,.07) * (1 - seg(p,.66,.99));
       const scale = lerp(.82, 1.0, seg(p,0,.10)) + seg(p,.10,.92)*0.7;
-      const blur  = lerp(6,0,seg(p,0,.10)) + seg(p,.82,.96)*11;
+      const blur  = lerp(6,0,seg(p,0,.10)) + seg(p,.66,.97)*11;
       o.inner.style.setProperty("--ttl-op", op.toFixed(3));
       o.inner.style.setProperty("--ttl-scale", scale.toFixed(3));
       o.inner.style.setProperty("--ttl-blur", blur.toFixed(2)+"px");
