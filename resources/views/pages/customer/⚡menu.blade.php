@@ -181,6 +181,10 @@ new #[Layout('layouts.customer')] #[Title('Menú · Piso Cuatro')] class extends
         <div>
             <p class="header-subtitle">Mesa {{ $mesa->numero }}</p>
             <p class="text-sm text-zinc-300">Hola, {{ $participantName }}</p>
+            <a href="{{ route('mesa.people', $mesa) }}"
+                class="mt-2 inline-flex rounded-full border border-zinc-800 px-3 py-1.5 text-xs font-semibold text-[var(--piso-gold)] transition hover:border-zinc-700 hover:bg-zinc-900/70">
+                ¿Alguien más va a pedir?
+            </a>
         </div>
         <div class="flex items-center gap-2">
             <button type="button" wire:click="callWaiter" class="btn-secondary">
@@ -201,11 +205,30 @@ new #[Layout('layouts.customer')] #[Title('Menú · Piso Cuatro')] class extends
                 wire:key="cat-{{ $category->id }}"
                 class="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/45"
                 x-data="{
+                    categoryId: {{ $category->id }},
                     shown: false,
                     height: '0px',
                     closing: false,
+                    isCategoryOpen() {
+                        return Object.values($wire.openCategories || {}).map(Number).includes(this.categoryId)
+                    },
                     syncHeight() {
                         this.height = `${this.$refs.body?.scrollHeight || 0}px`
+                    },
+                    toggle() {
+                        if (this.closing && this.isCategoryOpen()) {
+                            return
+                        }
+
+                        this.closing = false
+
+                        if (this.isCategoryOpen()) {
+                            this.close()
+
+                            return
+                        }
+
+                        $wire.toggleCategory(this.categoryId)
                     },
                     reveal() {
                         this.$nextTick(() => {
@@ -230,14 +253,18 @@ new #[Layout('layouts.customer')] #[Title('Menú · Piso Cuatro')] class extends
                                 this.shown = false
 
                                 setTimeout(() => {
-                                    $wire.toggleCategory({{ $category->id }})
+                                    if (this.isCategoryOpen()) {
+                                        $wire.toggleCategory(this.categoryId)
+                                    }
+
+                                    this.closing = false
                                 }, 720)
                             })
                         })
                     },
                 }"
             >
-                <button type="button" x-on:click="{{ $isOpen ? 'close()' : '$wire.toggleCategory('.$category->id.')' }}"
+                <button type="button" x-on:click="toggle()"
                     class="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-zinc-900/55 active:scale-[0.99]"
                     aria-expanded="{{ $isOpen ? 'true' : 'false' }}">
                     <span class="serif block text-2xl font-medium text-[var(--piso-fg)]">{{ $category->name }}</span>

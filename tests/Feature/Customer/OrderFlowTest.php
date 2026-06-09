@@ -157,7 +157,13 @@ class OrderFlowTest extends TestCase
             ->test('pages::customer.menu', ['mesa' => $mesa])
             ->assertDontSee('Mojito')
             ->call('toggleCategory', $cocteles->id)
-            ->assertSee('Mojito');
+            ->assertSee('Mojito')
+            ->call('toggleCategory', $cocteles->id)
+            ->assertDontSee('Mojito')
+            ->call('toggleCategory', $cocteles->id)
+            ->assertSee('Mojito')
+            ->call('toggleCategory', $cocteles->id)
+            ->assertDontSee('Mojito');
 
         $participant = SessionParticipant::where('token', $token)->firstOrFail();
         app(CartService::class)->add($participant, Product::first(), 1);

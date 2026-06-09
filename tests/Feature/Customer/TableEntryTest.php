@@ -88,6 +88,35 @@ class TableEntryTest extends TestCase
             ->assertSee('Mesa '.$mesa->numero);
     }
 
+    public function test_people_picker_lists_participants_and_switches_to_an_existing_one(): void
+    {
+        $mesa = $this->mesa();
+        $this->get(route('mesa.show', $mesa));
+
+        $joinJuan = $this->post(route('mesa.join', $mesa), ['nombre' => 'Juan']);
+        $juanToken = $joinJuan->getCookie('participant_token', false)->getValue();
+
+        $this->withUnencryptedCookie('participant_token', $juanToken)
+            ->get(route('mesa.people', $mesa))
+            ->assertOk()
+            ->assertSee('Nombre de la otra persona')
+            ->assertSee('Personas de esta mesa')
+            ->assertSee('Juan')
+            ->assertSee('Actual');
+
+        $joinMaria = $this->post(route('mesa.join', $mesa), ['nombre' => 'Maria']);
+        $mariaToken = $joinMaria->getCookie('participant_token', false)->getValue();
+
+        $session = $mesa->fresh()->activeSession;
+        $juan = $session->participants()->where('nombre', 'Juan')->firstOrFail();
+
+        $switch = $this->withUnencryptedCookie('participant_token', $mariaToken)
+            ->post(route('mesa.participants.use', [$mesa, $juan]))
+            ->assertRedirect(route('mesa.menu', $mesa));
+
+        $this->assertSame($juan->token, $switch->getCookie('participant_token', false)->getValue());
+    }
+
     public function test_fuera_de_servicio_is_blocked(): void
     {
         $mesa = $this->mesa('fuera_de_servicio');

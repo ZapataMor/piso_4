@@ -16,7 +16,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // Flujo público del cliente: escanear QR -> nombre -> menú interactivo.
 Route::prefix('mesa/{mesa:qr_token}')->middleware('throttle:mesa-public')->group(function () {
     Route::get('/', [TableEntryController::class, 'show'])->name('mesa.show');
+    Route::get('/personas', [TableEntryController::class, 'people'])->name('mesa.people');
     Route::post('/entrar', [TableEntryController::class, 'join'])->middleware('throttle:mesa-join')->name('mesa.join');
+    Route::post('/participantes/{participant}/usar', [TableEntryController::class, 'useParticipant'])->name('mesa.participants.use');
 
     Route::middleware(EnsureParticipant::class)->group(function () {
         Route::livewire('/menu', 'pages::customer.menu')->name('mesa.menu');

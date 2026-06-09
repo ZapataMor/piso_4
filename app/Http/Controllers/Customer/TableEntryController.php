@@ -35,7 +35,30 @@ class TableEntryController extends Controller
             return redirect()->route('mesa.menu', $mesa);
         }
 
-        return view('customer.entry', ['mesa' => $mesa, 'session' => $session]);
+        return view('customer.entry', [
+            'mesa' => $mesa,
+            'session' => $session,
+            'participants' => $this->participantsFor($session->id),
+            'showPeoplePicker' => false,
+            'currentParticipant' => null,
+        ]);
+    }
+
+    public function people(Request $request, Mesa $mesa): View|Response
+    {
+        if ($mesa->estado === TableStatus::FueraDeServicio) {
+            return response()->view('customer.unavailable', ['mesa' => $mesa], 503);
+        }
+
+        $session = $this->sessions->openOrGetActiveSession($mesa);
+
+        return view('customer.entry', [
+            'mesa' => $mesa,
+            'session' => $session,
+            'participants' => $this->participantsFor($session->id),
+            'showPeoplePicker' => true,
+            'currentParticipant' => $this->resolveParticipant($request, $session->id),
+        ]);
     }
 
     public function join(JoinSessionRequest $request, Mesa $mesa): RedirectResponse
@@ -44,6 +67,20 @@ class TableEntryController extends Controller
 
         $session = $this->sessions->openOrGetActiveSession($mesa);
         $participant = $this->sessions->addParticipant($session, $request->validated()['nombre']);
+
+        return redirect()
+            ->route('mesa.menu', $mesa)
+            ->withCookie(cookie('participant_token', $participant->token, 60 * 8)); // 8 horas
+    }
+
+    public function useParticipant(Mesa $mesa, SessionParticipant $participant): RedirectResponse
+    {
+        abort_if($mesa->estado === TableStatus::FueraDeServicio, 503);
+
+        $session = $this->sessions->openOrGetActiveSession($mesa);
+        abort_unless($participant->restaurant_session_id === $session->id, 404);
+
+        $participant->forceFill(['last_seen_at' => now()])->saveQuietly();
 
         return redirect()
             ->route('mesa.menu', $mesa)
@@ -62,5 +99,13 @@ class TableEntryController extends Controller
             ->where('token', $token)
             ->where('restaurant_session_id', $sessionId)
             ->first();
+    }
+
+    private function participantsFor(int $sessionId)
+    {
+        return SessionParticipant::query()
+            ->where('restaurant_session_id', $sessionId)
+            ->orderBy('created_at')
+            ->get();
     }
 }
