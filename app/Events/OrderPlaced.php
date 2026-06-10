@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Models\Order;
+use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -18,10 +19,10 @@ class OrderPlaced implements ShouldBroadcast
 
     public function __construct(public Order $order) {}
 
-    /** @return array<int, PrivateChannel> */
+    /** @return array<int, Channel|PrivateChannel> */
     public function broadcastOn(): array
     {
-        $this->order->loadMissing('items');
+        $this->order->loadMissing(['items', 'mesa']);
         $types = $this->order->items->map(fn ($i) => $i->tipo_preparacion->value)->unique();
 
         $channels = [new PrivateChannel('waiters')];
@@ -33,6 +34,8 @@ class OrderPlaced implements ShouldBroadcast
         if ($types->contains('bar')) {
             $channels[] = new PrivateChannel('bar');
         }
+
+        $channels[] = new Channel('mesa.'.$this->order->mesa->qr_token);
 
         return $channels;
     }

@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\RestaurantSession;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Estadísticas del negocio. "Ventas" = pagos confirmados (dinero real
@@ -119,14 +120,16 @@ class StatsService
     /** Métricas rápidas para el panel principal. */
     public function liveSnapshot(): array
     {
-        return [
-            'sales_today' => $this->salesToday(),
-            'active_tables' => RestaurantSession::where('estado', 'activa')->count(),
-            'pending_items' => OrderItem::whereIn('estado', [
-                OrderItemStatus::Pendiente->value,
-                OrderItemStatus::EnPreparacion->value,
-            ])->count(),
-            'orders_today' => Order::whereBetween('placed_at', [now()->startOfDay(), now()->endOfDay()])->count(),
-        ];
+        return Cache::remember('stats.live_snapshot', 5, function () {
+            return [
+                'sales_today'   => $this->salesToday(),
+                'active_tables' => RestaurantSession::where('estado', 'activa')->count(),
+                'pending_items' => OrderItem::whereIn('estado', [
+                    OrderItemStatus::Pendiente->value,
+                    OrderItemStatus::EnPreparacion->value,
+                ])->count(),
+                'orders_today'  => Order::whereBetween('placed_at', [now()->startOfDay(), now()->endOfDay()])->count(),
+            ];
+        });
     }
 }

@@ -60,7 +60,7 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
             ->first();
     }
 
-    #[Computed]
+    #[Computed(persist: true, seconds: 60)]
     public function items(): Collection
     {
         $session = $this->mesa->activeSession;
@@ -70,7 +70,7 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
             : collect();
     }
 
-    #[Computed]
+    #[Computed(persist: true, seconds: 60)]
     public function participants(): Collection
     {
         return $this->mesa->activeSession?->participants()->get() ?? collect();
@@ -142,6 +142,16 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
         }
     }
 
+    public function refreshBill(): void
+    {
+        unset($this->bill);
+    }
+
+    public function refreshItems(): void
+    {
+        unset($this->items, $this->bill);
+    }
+
     public function recalculate(): void
     {
         $this->participant();
@@ -211,7 +221,7 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
 
 <div class="flex min-h-svh flex-col"
      x-data
-     x-init="window.Echo && window.Echo.channel('mesa.{{ $mesa->qr_token }}').listen('.payment.confirmed', () => $wire.$refresh())">
+     x-init="window.Echo && window.Echo.channel('mesa.{{ $mesa->qr_token }}').listen('.order.placed', () => $wire.refreshItems()).listen('.payment.confirmed', () => $wire.refreshBill())">
     <header class="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-800 bg-zinc-950/90 px-5 py-4 backdrop-blur">
         <div>
             <p class="header-subtitle">Mesa {{ $mesa->numero }}</p>

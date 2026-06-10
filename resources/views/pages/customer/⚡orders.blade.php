@@ -51,6 +51,11 @@ new #[Layout('layouts.customer')] #[Title('Pedidos de la mesa · Piso Cuatro')] 
     {
         return (float) $this->orderGroups->sum('subtotal');
     }
+
+    public function refreshOrders(): void
+    {
+        unset($this->orderGroups);
+    }
 }; ?>
 
 @php
@@ -66,7 +71,7 @@ new #[Layout('layouts.customer')] #[Title('Pedidos de la mesa · Piso Cuatro')] 
 
 <div class="flex min-h-svh flex-col"
      x-data
-     x-init="window.Echo && window.Echo.channel('mesa.{{ $mesa->qr_token }}').listen('.order.item.status', () => $wire.$refresh())">
+     x-init="window.Echo && window.Echo.channel('mesa.{{ $mesa->qr_token }}').listen('.order.placed', () => $wire.refreshOrders()).listen('.order.item.status', () => $wire.refreshOrders())">
     <header class="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-800 bg-zinc-950/90 px-5 py-4 backdrop-blur">
         <div>
             <p class="header-subtitle">Mesa {{ $mesa->numero }}</p>
