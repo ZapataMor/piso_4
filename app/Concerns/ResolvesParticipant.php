@@ -16,8 +16,14 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 trait ResolvesParticipant
 {
+    private ?SessionParticipant $resolvedParticipant = null;
+
     protected function participant(): SessionParticipant
     {
+        if ($this->resolvedParticipant !== null) {
+            return $this->resolvedParticipant;
+        }
+
         $token = request()->cookie('participant_token');
         $session = $this->mesa->activeSession;
 
@@ -29,7 +35,7 @@ trait ResolvesParticipant
 
         abort_unless($participant, 403);
 
-        return $participant;
+        return $this->resolvedParticipant = $participant;
     }
 
     /** "Llamar Mesero" con límite anti-spam (1 cada 30 s por participante). */
