@@ -37,21 +37,22 @@ new #[Title('Usuarios · Piso 4')] class extends Component
     #[Computed]
     public function users(): Collection
     {
-        $items = User::with('role')->orderBy('name')->get();
-
-        if ($this->roleFilter !== 'Todos') {
-            $items = $items->filter(fn (User $u) => $u->role?->name === $this->roleFilter);
-        }
-
-        if ($this->search !== '') {
-            $q = mb_strtolower(trim($this->search));
-            $items = $items->filter(fn (User $u) => str_contains(mb_strtolower($u->name), $q)
-                || str_contains(mb_strtolower($u->email), $q)
-                || str_contains(mb_strtolower($u->phone ?? ''), $q)
-                || str_contains(mb_strtolower($u->role?->name ?? ''), $q));
-        }
-
-        return $items->values();
+        return User::with('role')
+            ->when($this->roleFilter !== 'Todos',
+                fn ($q) => $q->whereHas('role', fn ($q) => $q->where('name', $this->roleFilter))
+            )
+            ->when($this->search !== '', function ($q) {
+                $term = trim($this->search);
+                $q->where(fn ($q) => $q
+                    ->where('name', 'like', "%{$term}%")
+                    ->orWhere('email', 'like', "%{$term}%")
+                    ->orWhere('phone', 'like', "%{$term}%")
+                    ->orWhereHas('role', fn ($q) => $q->where('name', 'like', "%{$term}%"))
+                );
+            })
+            ->orderBy('name')
+            ->get()
+            ->values();
     }
 
     #[Computed]

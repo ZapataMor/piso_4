@@ -43,7 +43,9 @@ class SessionParticipant extends Model
     /** Total del carrito borrador de este participante. */
     public function cartTotal(): float
     {
-        return $this->cartItems
+        return (float) $this->cartItems()
+            ->with('product')
+            ->get()
             ->sum(fn (CartItem $item) => (float) ($item->product->price ?? 0) * $item->quantity);
     }
 }

@@ -53,26 +53,33 @@ new #[Title('Productos · Piso 4')] class extends Component
     #[Computed]
     public function products(): Collection
     {
-        $items = Product::with('category')->get();
+        $dir = $this->sortDir < 0 ? 'desc' : 'asc';
 
-        if ($this->catFilter !== 'Todas') {
-            $items = $items->filter(fn (Product $p) => $p->category?->name === $this->catFilter);
+        $query = Product::with('category')
+            ->when($this->catFilter !== 'Todas',
+                fn ($q) => $q->whereHas('category', fn ($q) => $q->where('name', $this->catFilter))
+            )
+            ->when($this->search !== '', function ($q) {
+                $term = trim($this->search);
+                $q->where(fn ($q) => $q
+                    ->where('name', 'like', "%{$term}%")
+                    ->orWhereHas('category', fn ($q) => $q->where('name', 'like', "%{$term}%"))
+                );
+            });
+
+        if ($this->sortKey === 'p') {
+            return $query->orderBy('price', $dir)->get()->values();
         }
 
-        if ($this->search !== '') {
-            $q = mb_strtolower(trim($this->search));
-            $items = $items->filter(fn (Product $p) => str_contains(mb_strtolower($p->name), $q)
-                || str_contains(mb_strtolower($p->category?->name ?? ''), $q));
+        if ($this->sortKey === 'c') {
+            $desc = $this->sortDir < 0;
+
+            return $query->get()
+                ->sortBy(fn (Product $p) => mb_strtolower($p->category?->name ?? ''), SORT_NATURAL, $desc)
+                ->values();
         }
 
-        $desc = $this->sortDir < 0;
-        $items = match ($this->sortKey) {
-            'c' => $items->sortBy(fn (Product $p) => mb_strtolower($p->category?->name ?? ''), SORT_NATURAL, $desc),
-            'p' => $items->sortBy(fn (Product $p) => (float) ($p->price ?? 0), SORT_REGULAR, $desc),
-            default => $items->sortBy(fn (Product $p) => mb_strtolower($p->name), SORT_NATURAL, $desc),
-        };
-
-        return $items->values();
+        return $query->orderBy('name', $dir)->get()->values();
     }
 
     #[Computed]

@@ -5,6 +5,7 @@ use App\Helpers\Money;
 use App\Services\StatsService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -56,6 +57,12 @@ new #[Title('Estadísticas · Piso 4')] class extends Component
     public function incomeByMethod(): Collection
     {
         return $this->stats()->incomeByMethod();
+    }
+
+    #[On('echo-private:waiters,.order.placed')]
+    public function onOrderPlaced(): void
+    {
+        unset($this->topProducts, $this->topTables);
     }
 
     public function money(float|int|string|null $v): string

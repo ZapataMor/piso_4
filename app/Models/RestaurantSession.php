@@ -68,6 +68,12 @@ class RestaurantSession extends Model
     /** Total consumido en la sesión (excluye líneas canceladas). */
     public function currentTotal(): float
     {
+        if ($this->relationLoaded('orderItems')) {
+            return (float) $this->orderItems
+                ->reject(fn (OrderItem $item) => $item->estado === OrderItemStatus::Cancelado)
+                ->sum(fn (OrderItem $item) => (float) $item->unit_price * $item->quantity);
+        }
+
         return (float) $this->orderItems()
             ->where('order_items.estado', '!=', OrderItemStatus::Cancelado->value)
             ->sum(DB::raw('unit_price * quantity'));

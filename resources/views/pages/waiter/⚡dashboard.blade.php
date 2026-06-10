@@ -66,7 +66,11 @@ new #[Title('Meseros · Piso 4')] class extends Component
     public function activeSessions(): Collection
     {
         return RestaurantSession::where('estado', 'activa')
-            ->with(['mesa', 'participants'])
+            ->with([
+                'mesa',
+                'participants',
+                'orderItems' => fn ($q) => $q->where('order_items.estado', '!=', OrderItemStatus::Cancelado->value),
+            ])
             ->withCount('orders')
             ->get()
             ->sortBy(fn (RestaurantSession $s) => $s->mesa->numero)

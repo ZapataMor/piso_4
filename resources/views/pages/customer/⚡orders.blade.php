@@ -23,8 +23,8 @@ new #[Layout('layouts.customer')] #[Title('Pedidos de la mesa · Piso Cuatro')] 
     #[Computed]
     public function orderGroups(): Collection
     {
-        $participant = $this->participant();
-        $orders = $participant->session->orders()
+        $this->participant();
+        $orders = $this->mesa->activeSession->orders()
             ->with(['items', 'participant'])
             ->oldest('numero')
             ->get();

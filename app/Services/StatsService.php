@@ -42,13 +42,22 @@ class StatsService
     /** Ventas por día de los últimos N días. */
     public function salesByDay(int $days = 7): Collection
     {
-        return collect(range($days - 1, 0))->map(function (int $i) {
+        $from = now()->subDays($days - 1)->startOfDay();
+        $to   = now()->endOfDay();
+
+        $totals = Payment::confirmed()
+            ->whereBetween('confirmed_at', [$from, $to])
+            ->selectRaw('DATE(confirmed_at) as day, SUM(monto) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        return collect(range($days - 1, 0))->map(function (int $i) use ($totals) {
             $day = now()->subDays($i);
 
             return [
-                'date' => $day->toDateString(),
+                'date'  => $day->toDateString(),
                 'label' => ucfirst($day->isoFormat('ddd D')),
-                'total' => $this->salesBetween($day->copy()->startOfDay(), $day->copy()->endOfDay()),
+                'total' => (float) ($totals[$day->toDateString()] ?? 0),
             ];
         })->values();
     }
