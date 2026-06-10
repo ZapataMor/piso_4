@@ -150,9 +150,10 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
 
     public function updateMethod(int $paymentId, string $metodo, PaymentService $payments): void
     {
-        $this->participant();
+        $participant = $this->participant();
 
         if ($payment = $this->bill?->payments->firstWhere('id', $paymentId)) {
+            abort_unless((int) $payment->session_participant_id === $participant->id, 403);
             $payments->setMethod(
                 $payment,
                 PaymentMethod::from($metodo),
@@ -165,9 +166,10 @@ new #[Layout('layouts.customer')] #[Title('Cuenta · Piso 4')] class extends Com
 
     public function saveTransfer(int $paymentId, PaymentService $payments): void
     {
-        $this->participant();
+        $participant = $this->participant();
 
         if ($payment = $this->bill?->payments->firstWhere('id', $paymentId)) {
+            abort_unless((int) $payment->session_participant_id === $participant->id, 403);
             $payments->setMethod(
                 $payment,
                 PaymentMethod::Transferencia,
